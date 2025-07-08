@@ -344,7 +344,6 @@ Assistant: 4
 
 - macOS 13.0+
 - Swift 5.9+
-- OpenAI API key
 
 ## License
 
