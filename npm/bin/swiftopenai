@@ -1,0 +1,4 @@
+#!/usr/bin/env node
+console.error('SwiftOpenAI-CLI binary not installed properly.');
+console.error('Please run: npm install -g swiftopenai-cli');
+process.exit(1);

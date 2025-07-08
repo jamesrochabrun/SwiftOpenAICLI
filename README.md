@@ -19,7 +19,19 @@ A command-line interface for interacting with OpenAI's API, built with Swift.
 
 ## Installation
 
-### Using Mint (Recommended)
+### Using npm (Recommended)
+
+The easiest way to install SwiftOpenAI-CLI is via npm:
+
+```bash
+npm install -g swiftopenai-cli
+```
+
+That's it! The `swiftopenai` command is now available globally.
+
+**Note:** Currently supports macOS (Apple Silicon). Intel Mac and Linux support coming soon.
+
+### Using Mint
 
 [Mint](https://github.com/yonaskolb/Mint) is a package manager for Swift command-line tools.
 
@@ -40,8 +52,6 @@ mint install jamesrochabrun/SwiftOpenAICLI
 # Install specific version
 mint install jamesrochabrun/SwiftOpenAICLI@1.1.0
 ```
-
-That's it! The `swiftopenai` command is now available.
 
 **Note:** If you get a "command not found" error, you may need to add Mint's bin directory to your PATH:
 ```bash
@@ -119,6 +129,18 @@ swift build -c release && cp .build/release/swiftopenai /usr/local/bin/
 **Note:** When using `swift run`, you'll see build output like "Building for production..." before your actual results. This is normal Swift behavior. To avoid this, install the binary as shown above.
 
 ## Updating
+
+### Using npm
+
+Update to the latest version:
+```bash
+npm update -g swiftopenai-cli
+```
+
+Check installed version:
+```bash
+npm list -g swiftopenai-cli
+```
 
 ### Using Mint
 

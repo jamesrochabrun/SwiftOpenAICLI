@@ -1,0 +1,5 @@
+#!/bin/bash
+echo "Error: macOS Intel (x64) binary not yet available."
+echo "This platform will be supported in a future release."
+echo "For now, please build from source: https://github.com/jamesrochabrun/SwiftOpenAICLI"
+exit 1

@@ -1,0 +1,53 @@
+{
+  "name": "swiftopenai-cli",
+  "version": "1.1.0",
+  "description": "Command-line interface for OpenAI API, supporting multiple providers",
+  "keywords": [
+    "openai",
+    "cli",
+    "gpt",
+    "chatgpt",
+    "dall-e",
+    "ai",
+    "swift",
+    "grok",
+    "groq",
+    "deepseek",
+    "openrouter"
+  ],
+  "homepage": "https://github.com/jamesrochabrun/SwiftOpenAICLI",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jamesrochabrun/SwiftOpenAICLI.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jamesrochabrun/SwiftOpenAICLI/issues"
+  },
+  "author": "James Rochabrun",
+  "license": "MIT",
+  "bin": {
+    "swiftopenai": "./bin/swiftopenai"
+  },
+  "scripts": {
+    "postinstall": "node lib/install.js",
+    "preuninstall": "node lib/uninstall.js"
+  },
+  "files": [
+    "bin/",
+    "lib/",
+    "binaries/",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "os": [
+    "darwin",
+    "linux"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ]
+}
