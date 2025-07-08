@@ -21,6 +21,9 @@ struct ChatCommand: AsyncParsableCommand {
     @Flag(name: .long, help: "Disable streaming response")
     var noStream = false
     
+    @Flag(name: [.customShort("p"), .long], help: "Plain output without formatting")
+    var plain = false
+    
     @Option(name: .long, help: "System prompt")
     var system: String?
     
@@ -43,7 +46,8 @@ struct ChatCommand: AsyncParsableCommand {
                 system: system,
                 temperature: temperature,
                 maxTokens: maxTokens,
-                stream: !noStream
+                stream: !noStream,
+                plain: plain
             )
         } else {
             print("Please provide a message or use --interactive flag".red)
@@ -52,21 +56,29 @@ struct ChatCommand: AsyncParsableCommand {
     }
     
     private func runInteractiveMode() async throws {
-        print("🤖 OpenAI Chat (\(model))".cyan)
-        print("Type 'exit' to quit, 'clear' to clear history".lightBlack)
-        print("")
+        if !plain {
+            print("🤖 OpenAI Chat (\(model))".cyan)
+            print("Type 'exit' to quit, 'clear' to clear history".lightBlack)
+            print("")
+        }
         
         while true {
-            print("You: ".green, terminator: "")
+            if !plain {
+                print("You: ".green, terminator: "")
+            }
             guard let input = readLine(), !input.isEmpty else { continue }
             
             if input.lowercased() == "exit" {
-                print("Goodbye!".yellow)
+                if !plain {
+                    print("Goodbye!".yellow)
+                }
                 break
             }
             
             if input.lowercased() == "clear" {
-                print("Conversation cleared.".yellow)
+                if !plain {
+                    print("Conversation cleared.".yellow)
+                }
                 continue
             }
             
@@ -77,7 +89,8 @@ struct ChatCommand: AsyncParsableCommand {
                     system: system,
                     temperature: temperature,
                     maxTokens: maxTokens,
-                    stream: !noStream
+                    stream: !noStream,
+                    plain: plain
                 )
                 print() // Add spacing
             } catch {

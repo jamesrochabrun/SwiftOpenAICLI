@@ -15,7 +15,7 @@ let package = Package(
         )
     ],
     dependencies: [
-        .package(url: "https://github.com/jamesrochabrun/SwiftOpenAI.git", from: "2.9.0"),
+        .package(url: "https://github.com/jamesrochabrun/SwiftOpenAI.git", from: "4.3.1"),
         .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.6.1"),
         .package(url: "https://github.com/onevcat/Rainbow.git", from: "4.1.0"),
         .package(url: "https://github.com/scottrhoyt/SwiftyTextTable.git", from: "0.9.0"),

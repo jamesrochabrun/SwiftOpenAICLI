@@ -32,7 +32,7 @@ struct ImageCommand: AsyncParsableCommand {
         print("Model: \(model), Size: \(size), Quality: \(quality)".green)
         
         do {
-            let images = try await OpenAIService.shared.generateImage(
+            let response = try await OpenAIService.shared.generateImage(
                 prompt: prompt,
                 model: model,
                 size: size,
@@ -40,17 +40,22 @@ struct ImageCommand: AsyncParsableCommand {
                 n: number
             )
             
+            guard let images = response.data else {
+                print("No images were generated".yellow)
+                return
+            }
+            
             print("\nGenerated \(images.count) image(s):".green)
             
             for (index, image) in images.enumerated() {
-                if let url = image.url {
+                if let urlString = image.url, let url = URL(string: urlString) {
                     print("\(index + 1). URL: \(url.absoluteString)")
                     
                     // Download and save if output directory is specified
                     if output != "." {
                         try await saveImage(from: url, index: index + 1)
                     }
-                } else if let b64 = image.b64Json {
+                } else if let b64 = image.b64JSON {
                     print("\(index + 1). Base64 data received (length: \(b64.count))")
                     
                     // Save base64 image if output directory is specified

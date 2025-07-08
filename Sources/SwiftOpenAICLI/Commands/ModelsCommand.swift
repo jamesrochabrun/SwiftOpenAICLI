@@ -40,7 +40,7 @@ struct ModelsCommand: AsyncParsableCommand {
                 ])
                 
                 for model in filteredModels {
-                    let date = Date(timeIntervalSince1970: TimeInterval(model.created))
+                    let date = Date(timeIntervalSince1970: TimeInterval(model.created ?? 0))
                     let formatter = DateFormatter()
                     formatter.dateStyle = .short
                     table.addRow(values: [

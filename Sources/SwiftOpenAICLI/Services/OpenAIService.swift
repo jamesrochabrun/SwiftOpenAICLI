@@ -14,18 +14,35 @@ class OpenAIService {
             print("✗ No API key found!".red)
             print("Set your API key using one of these methods:".yellow)
             print("1. Environment variable: export OPENAI_API_KEY=sk-...")
-            print("2. CLI config: openai config set api-key sk-...")
+            print("2. CLI config: swiftopenai config set api-key sk-...")
             throw OpenAIServiceError.noAPIKey
         }
         
         if service == nil {
-            service = OpenAIServiceFactory.service(apiKey: apiKey)
+            // Check if we have a custom provider configuration
+            if let _ = ConfigurationManager.shared.provider,
+               let baseURL = ConfigurationManager.shared.baseURL {
+                // Use custom provider configuration
+                let debugEnabled = ConfigurationManager.shared.debugEnabled ?? false
+                service = OpenAIServiceFactory.service(
+                    apiKey: apiKey,
+                    overrideBaseURL: baseURL,
+                    debugEnabled: debugEnabled
+                )
+            } else {
+                // Use standard OpenAI configuration
+                let debugEnabled = ConfigurationManager.shared.debugEnabled ?? false
+                service = OpenAIServiceFactory.service(
+                    apiKey: apiKey,
+                    debugEnabled: debugEnabled
+                )
+            }
         }
         
         return service!
     }
     
-    func chat(message: String, model: String, system: String? = nil, temperature: Double = 1.0, maxTokens: Int? = nil, stream: Bool = true) async throws {
+    func chat(message: String, model: String, system: String? = nil, temperature: Double = 1.0, maxTokens: Int? = nil, stream: Bool = true, plain: Bool = false) async throws {
         let openAI = try getService()
         
         var messages: [ChatCompletionParameters.Message] = []
@@ -44,22 +61,41 @@ class OpenAIService {
         )
         
         if stream {
-            print("Assistant: ".cyan, terminator: "")
-            fflush(stdout)
+            if !plain {
+                print("Assistant: ".cyan, terminator: "")
+                fflush(stdout)
+            }
             
             let stream = try await openAI.startStreamedChat(parameters: parameters)
             
             for try await result in stream {
-                if let content = result.choices.first?.delta.content {
+                if let content = result.choices?.first?.delta?.content {
                     print(content, terminator: "")
                     fflush(stdout)
                 }
             }
             print() // New line after streaming
         } else {
+            // Show loading indicator for non-streaming mode
+            if !plain {
+                print("Thinking...".lightBlack, terminator: "")
+                fflush(stdout)
+            }
+            
             let result = try await openAI.startChat(parameters: parameters)
-            if let content = result.choices.first?.message.content {
-                print("Assistant: ".cyan + content)
+            
+            // Clear the loading indicator
+            if !plain {
+                print("\r", terminator: "") // Carriage return to overwrite "Thinking..."
+                fflush(stdout)
+            }
+            
+            if let content = result.choices?.first?.message?.content {
+                if plain {
+                    print(content)
+                } else {
+                    print("Assistant: ".cyan + content)
+                }
             }
         }
     }
@@ -70,37 +106,21 @@ class OpenAIService {
         return response.data.sorted { $0.id < $1.id }
     }
     
-    func generateImage(prompt: String, model: String, size: String, quality: String, n: Int) async throws -> [ImageObject] {
+    func generateImage(prompt: String, model: String, size: String, quality: String, n: Int) async throws -> CreateImageResponse {
         let openAI = try getService()
         
-        let dalleModel: Dalle
-        if model == "dall-e-2" {
-            let imageSize: Dalle.Dalle2ImageSize = switch size {
-            case "256x256": .small
-            case "512x512": .medium
-            case "1024x1024": .large
-            default: .large
-            }
-            dalleModel = .dalle2(imageSize)
-        } else {
-            let imageSize: Dalle.Dalle3ImageSize = switch size {
-            case "1024x1024": .largeSquare
-            case "1792x1024": .landscape
-            case "1024x1792": .portrait
-            default: .largeSquare
-            }
-            dalleModel = .dalle3(imageSize)
-        }
+        let imageModel: CreateImageParameters.Model = model == "dall-e-2" ? .dallE2 : .dallE3
+        let imageQuality: CreateImageParameters.Quality = quality == "hd" ? .hd : .standard
         
-        let parameters = ImageCreateParameters(
+        let parameters = CreateImageParameters(
             prompt: prompt,
-            model: dalleModel,
-            numberOfImages: n,
-            quality: quality == "hd" ? "hd" : "standard"
+            model: imageModel,
+            n: n,
+            quality: imageQuality,
+            size: size
         )
         
-        let response = try await openAI.createImages(parameters: parameters)
-        return response.data
+        return try await openAI.createImages(parameters: parameters)
     }
     
     // Completions API is deprecated, use chat instead

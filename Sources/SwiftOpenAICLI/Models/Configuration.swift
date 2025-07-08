@@ -7,7 +7,12 @@ struct Configuration: Codable {
     var temperature: Double = 1.0
     var maxTokens: Int?
     
+    // Provider configuration
+    var provider: String?
+    var baseURL: String?
+    var debugEnabled: Bool?
+    
     static let defaultConfigPath = URL(fileURLWithPath: NSHomeDirectory())
-        .appendingPathComponent(".openai")
+        .appendingPathComponent(".swiftopenai")
         .appendingPathComponent("config.json")
 }

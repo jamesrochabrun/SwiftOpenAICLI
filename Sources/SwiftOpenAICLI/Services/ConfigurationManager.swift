@@ -25,6 +25,18 @@ class ConfigurationManager {
         return configuration.defaultModel
     }
     
+    var provider: String? {
+        return configuration.provider
+    }
+    
+    var baseURL: String? {
+        return configuration.baseURL
+    }
+    
+    var debugEnabled: Bool? {
+        return configuration.debugEnabled
+    }
+    
     func get(_ key: String) -> String? {
         switch key {
         case "api-key":
@@ -37,6 +49,12 @@ class ConfigurationManager {
             return String(configuration.temperature)
         case "max-tokens":
             return configuration.maxTokens.map { String($0) }
+        case "provider":
+            return configuration.provider
+        case "base-url":
+            return configuration.baseURL
+        case "debug":
+            return configuration.debugEnabled.map { String($0) }
         default:
             return nil
         }
@@ -63,6 +81,12 @@ class ConfigurationManager {
                 throw ConfigurationError.invalidValue(key: key, value: value)
             }
             configuration.maxTokens = tokens
+        case "provider":
+            configuration.provider = value
+        case "base-url":
+            configuration.baseURL = value
+        case "debug":
+            configuration.debugEnabled = value.lowercased() == "true" || value == "1"
         default:
             throw ConfigurationError.unknownKey(key)
         }
@@ -79,6 +103,15 @@ class ConfigurationManager {
         items.append(("temperature", String(configuration.temperature)))
         if let maxTokens = configuration.maxTokens {
             items.append(("max-tokens", String(maxTokens)))
+        }
+        if let provider = configuration.provider {
+            items.append(("provider", provider))
+        }
+        if let baseURL = configuration.baseURL {
+            items.append(("base-url", baseURL))
+        }
+        if let debug = configuration.debugEnabled {
+            items.append(("debug", String(debug)))
         }
         
         return items
