@@ -41,7 +41,18 @@ mint install jamesrochabrun/SwiftOpenAICLI
 mint install jamesrochabrun/SwiftOpenAICLI@1.1.0
 ```
 
-That's it! The `swiftopenai` command is now available globally.
+That's it! The `swiftopenai` command is now available.
+
+**Note:** If you get a "command not found" error, you may need to add Mint's bin directory to your PATH:
+```bash
+# Add to your ~/.zshrc or ~/.bash_profile
+export PATH="$HOME/.mint/bin:$PATH"
+```
+
+Or run commands through mint:
+```bash
+mint run swiftopenai "What is Swift?"
+```
 
 ### Using Homebrew (Coming Soon)
 ```bash
