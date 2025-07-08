@@ -1,5 +1,12 @@
 #!/bin/bash
-echo "Error: Linux x64 binary not yet available."
-echo "This platform will be supported in a future release."
-echo "For now, please build from source: https://github.com/jamesrochabrun/SwiftOpenAICLI"
+echo "Error: Linux binary not included in npm package."
+echo ""
+echo "Linux users should build from source:"
+echo ""
+echo "git clone https://github.com/jamesrochabrun/SwiftOpenAICLI.git"
+echo "cd SwiftOpenAICLI"
+echo "swift build -c release"
+echo "sudo cp .build/release/swiftopenai /usr/local/bin/"
+echo ""
+echo "Ensure you have Swift installed: https://swift.org/download/"
 exit 1

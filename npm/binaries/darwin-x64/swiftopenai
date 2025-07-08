@@ -1,5 +1,11 @@
 #!/bin/bash
-echo "Error: macOS Intel (x64) binary not yet available."
-echo "This platform will be supported in a future release."
-echo "For now, please build from source: https://github.com/jamesrochabrun/SwiftOpenAICLI"
+echo "Error: This package currently includes only Apple Silicon (M1/M2/M3) binary."
+echo ""
+echo "Intel Mac users can:"
+echo "1. Try running with Rosetta 2 (may work automatically)"
+echo "2. Build from source: https://github.com/jamesrochabrun/SwiftOpenAICLI"
+echo ""
+echo "cd ~ && git clone https://github.com/jamesrochabrun/SwiftOpenAICLI.git"
+echo "cd SwiftOpenAICLI && swift build -c release"
+echo "sudo cp .build/release/swiftopenai /usr/local/bin/"
 exit 1

@@ -29,47 +29,14 @@ npm install -g swiftopenai-cli
 
 That's it! The `swiftopenai` command is now available globally.
 
-**Note:** Currently supports macOS (Apple Silicon). Intel Mac and Linux support coming soon.
-
-### Using Mint
-
-[Mint](https://github.com/yonaskolb/Mint) is a package manager for Swift command-line tools.
-
-1. Install Mint (if you haven't already):
-```bash
-# Using Homebrew
-brew install mint
-
-# Or using the install script
-bash <(curl -fsSL https://raw.githubusercontent.com/yonaskolb/Mint/master/install.sh)
-```
-
-2. Install SwiftOpenAI-CLI:
-```bash
-# Install latest version
-mint install jamesrochabrun/SwiftOpenAICLI
-
-# Install specific version
-mint install jamesrochabrun/SwiftOpenAICLI@1.1.0
-```
-
-**Note:** If you get a "command not found" error, you may need to add Mint's bin directory to your PATH:
-```bash
-# Add to your ~/.zshrc or ~/.bash_profile
-export PATH="$HOME/.mint/bin:$PATH"
-```
-
-Or run commands through mint:
-```bash
-mint run swiftopenai "What is Swift?"
-```
-
-### Using Homebrew (Coming Soon)
-```bash
-brew install swiftopenai
-```
+**Platform Support:**
+- ✅ macOS (Apple Silicon M1/M2/M3)
+- ⚠️ macOS (Intel) - Requires Rosetta 2
+- ❌ Linux - Use "Build from Source" below
 
 ### Build from Source
+
+Perfect for developers, contributors, or if you need to run on Linux.
 
 1. Clone the repository:
 ```bash
@@ -79,96 +46,66 @@ cd SwiftOpenAICLI
 
 2. Build the project:
 ```bash
-# For production use (no debug output)
 swift build -c release
-
-# For development with debug output (shows API requests/responses)
-swift build
 ```
 
-3. Copy the binary to your PATH:
+3. Install the binary:
 ```bash
-# For release build
 cp .build/release/swiftopenai /usr/local/bin/
-
-# For debug build
-cp .build/debug/swiftopenai /usr/local/bin/
 ```
 
-#### Debug Mode
+Or run directly without installing:
+```bash
+swift run swiftopenai "Hello, world!"
+```
 
-The CLI includes debug output that shows:
+### Alternative Installation Methods
+
+<details>
+<summary><b>Using Mint</b></summary>
+
+[Mint](https://github.com/yonaskolb/Mint) is a package manager for Swift command-line tools.
+
+1. Install Mint:
+```bash
+brew install mint
+```
+
+2. Install SwiftOpenAI-CLI:
+```bash
+mint install jamesrochabrun/SwiftOpenAICLI
+```
+
+**Note:** You'll need to add Mint's bin directory to your PATH:
+```bash
+export PATH="$HOME/.mint/bin:$PATH"
+```
+</details>
+
+<details>
+<summary><b>Debug Build Information</b></summary>
+
+The CLI includes debug output when built in debug mode:
 - Full curl commands for API requests
-- HTTP response headers and status codes
+- HTTP response headers and status codes  
 - Raw JSON responses from the API
 
-To control debug output:
-
-**When using `swift run`:**
+To build with debug output:
 ```bash
-# Debug mode (default - shows verbose output)
-swift run swiftopenai "your prompt"
-
-# Release mode (clean output only)
-swift run --configuration release swiftopenai "your prompt"
-# or shorter:
-swift run -c release swiftopenai "your prompt"
+swift build  # Debug mode
+swift build -c release  # Release mode (recommended)
 ```
-
-**When building and installing:**
-```bash
-swift build  # Debug mode (with verbose output)
-swift build -c release  # Release mode (clean output only)
-```
-
-**Tip:** For daily use, build and install in release mode to avoid debug output:
-```bash
-swift build -c release && cp .build/release/swiftopenai /usr/local/bin/
-```
-
-**Note:** When using `swift run`, you'll see build output like "Building for production..." before your actual results. This is normal Swift behavior. To avoid this, install the binary as shown above.
+</details>
 
 ## Updating
 
-### Using npm
-
-Update to the latest version:
 ```bash
 npm update -g swiftopenai-cli
 ```
 
-Check installed version:
-```bash
-npm list -g swiftopenai-cli
-```
-
-### Using Mint
-
-Update to the latest version:
-```bash
-mint install jamesrochabrun/SwiftOpenAICLI --force
-```
-
-Check installed version:
+To check your current version:
 ```bash
 swiftopenai --version
-```
-
-List all installed versions:
-```bash
-mint list
-```
-
-### Using Mintfile
-
-For projects that depend on a specific version, create a `Mintfile`:
-```
-jamesrochabrun/SwiftOpenAICLI@1.1.0
-```
-
-Then install dependencies:
-```bash
-mint bootstrap
 ```
 
 ## Configuration
