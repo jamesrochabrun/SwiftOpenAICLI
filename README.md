@@ -5,7 +5,7 @@ A command-line interface for interacting with OpenAI's API, built with Swift.
 ## Features
 
 - 💬 **Chat** - Interactive conversations with GPT models
-- 🖼️ **Image Generation** - Create images using DALL-E
+- 🖼️ **Image Generation** - Generate images with AI models
 - 📊 **Models** - List and filter available models
 - 🔤 **Completions** - Generate text completions
 - 🧮 **Embeddings** - Generate text embeddings

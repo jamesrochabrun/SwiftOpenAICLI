@@ -6,7 +6,7 @@ import Rainbow
 struct ImageCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "image",
-        abstract: "Generate images using DALL-E"
+        abstract: "Generate images with AI models"
     )
     
     @Argument(help: "The prompt for image generation")
