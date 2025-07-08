@@ -371,6 +371,10 @@ $ swiftopenai "What is 2+2?"
 Assistant: 4
 ```
 
+## Using it with Claude Code
+
+https://github.com/user-attachments/assets/3fa87fe1-e672-4ade-9255-ce53b1301081
+
 ## Requirements
 
 - macOS 13.0+
