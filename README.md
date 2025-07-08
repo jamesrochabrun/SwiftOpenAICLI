@@ -1,6 +1,7 @@
 # SwiftOpenAI-CLI
 
 <img width="1090" alt="repoOpenAI" src="https://github.com/user-attachments/assets/693325f3-b633-49c8-98ac-7c8b25b29a6c">
+
 ![macOS 13+](https://img.shields.io/badge/macOS-13%2B-blue.svg)
 ![Linux](https://img.shields.io/badge/Linux-blue.svg)
 [![Buy me a coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-048754?logo=buymeacoffee)](https://buymeacoffee.com/jamesrochabrun)
