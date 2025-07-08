@@ -19,6 +19,30 @@ A command-line interface for interacting with OpenAI's API, built with Swift.
 
 ## Installation
 
+### Using Mint (Recommended)
+
+[Mint](https://github.com/yonaskolb/Mint) is a package manager for Swift command-line tools.
+
+1. Install Mint (if you haven't already):
+```bash
+# Using Homebrew
+brew install mint
+
+# Or using the install script
+bash <(curl -fsSL https://raw.githubusercontent.com/yonaskolb/Mint/master/install.sh)
+```
+
+2. Install SwiftOpenAI-CLI:
+```bash
+# Install latest version
+mint install jamesrochabrun/SwiftOpenAICLI
+
+# Install specific version
+mint install jamesrochabrun/SwiftOpenAICLI@1.1.0
+```
+
+That's it! The `swiftopenai` command is now available globally.
+
 ### Using Homebrew (Coming Soon)
 ```bash
 brew install swiftopenai
@@ -28,8 +52,8 @@ brew install swiftopenai
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/jamesrochabrun/SwiftOpenAI-CLI.git
-cd SwiftOpenAI-CLI
+git clone https://github.com/jamesrochabrun/SwiftOpenAICLI.git
+cd SwiftOpenAICLI
 ```
 
 2. Build the project:
@@ -82,6 +106,37 @@ swift build -c release && cp .build/release/swiftopenai /usr/local/bin/
 ```
 
 **Note:** When using `swift run`, you'll see build output like "Building for production..." before your actual results. This is normal Swift behavior. To avoid this, install the binary as shown above.
+
+## Updating
+
+### Using Mint
+
+Update to the latest version:
+```bash
+mint install jamesrochabrun/SwiftOpenAICLI --force
+```
+
+Check installed version:
+```bash
+swiftopenai --version
+```
+
+List all installed versions:
+```bash
+mint list
+```
+
+### Using Mintfile
+
+For projects that depend on a specific version, create a `Mintfile`:
+```
+jamesrochabrun/SwiftOpenAICLI@1.1.0
+```
+
+Then install dependencies:
+```bash
+mint bootstrap
+```
 
 ## Configuration
 
