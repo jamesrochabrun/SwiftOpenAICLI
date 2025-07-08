@@ -4,7 +4,7 @@ import SwiftOpenAI
 import Rainbow
 import SwiftyTextTable
 
-struct ModelsCommand: ParsableCommand {
+struct ModelsCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "models",
         abstract: "List available OpenAI models"

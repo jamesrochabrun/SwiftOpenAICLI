@@ -3,7 +3,7 @@ import Foundation
 import SwiftOpenAI
 import Rainbow
 
-struct EmbedCommand: ParsableCommand {
+struct EmbedCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "embed",
         abstract: "Generate text embeddings"

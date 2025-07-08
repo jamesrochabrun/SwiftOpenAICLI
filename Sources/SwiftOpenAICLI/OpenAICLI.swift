@@ -2,7 +2,7 @@ import ArgumentParser
 import Foundation
 
 @main
-struct OpenAICLI: ParsableCommand {
+struct OpenAICLI: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "swiftopenai",
         abstract: "A command-line interface for OpenAI API",

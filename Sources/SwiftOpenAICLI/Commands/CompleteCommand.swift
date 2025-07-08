@@ -3,7 +3,7 @@ import Foundation
 import SwiftOpenAI
 import Rainbow
 
-struct CompleteCommand: ParsableCommand {
+struct CompleteCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "complete",
         abstract: "Generate text completions (uses chat API)"

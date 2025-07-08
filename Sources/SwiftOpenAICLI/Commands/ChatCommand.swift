@@ -3,7 +3,7 @@ import Foundation
 import SwiftOpenAI
 import Rainbow
 
-struct ChatCommand: ParsableCommand {
+struct ChatCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "chat",
         abstract: "Chat with OpenAI models"

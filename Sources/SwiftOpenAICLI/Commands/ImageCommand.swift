@@ -3,7 +3,7 @@ import Foundation
 import SwiftOpenAI
 import Rainbow
 
-struct ImageCommand: ParsableCommand {
+struct ImageCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "image",
         abstract: "Generate images using DALL-E"
