@@ -6,6 +6,14 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		7B0BFD312E1C520B00C89010 /* SwiftOpenAI in Frameworks */ = {isa = PBXBuildFile; productRef = 7B0BFD302E1C520B00C89010 /* SwiftOpenAI */; };
+		7B0BFD342E1C521F00C89010 /* ArgumentParser in Frameworks */ = {isa = PBXBuildFile; productRef = 7B0BFD332E1C521F00C89010 /* ArgumentParser */; };
+		7B0BFD372E1C523600C89010 /* Rainbow in Frameworks */ = {isa = PBXBuildFile; productRef = 7B0BFD362E1C523600C89010 /* Rainbow */; };
+		7B0BFD3A2E1C531200C89010 /* SwiftyTextTable in Frameworks */ = {isa = PBXBuildFile; productRef = 7B0BFD392E1C531200C89010 /* SwiftyTextTable */; };
+		7B0BFD3D2E1C534000C89010 /* Markdown in Frameworks */ = {isa = PBXBuildFile; productRef = 7B0BFD3C2E1C534000C89010 /* Markdown */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXCopyFilesBuildPhase section */
 		7B0BFD232E1C50E100C89010 /* CopyFiles */ = {
 			isa = PBXCopyFilesBuildPhase;
@@ -35,6 +43,11 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7B0BFD372E1C523600C89010 /* Rainbow in Frameworks */,
+				7B0BFD342E1C521F00C89010 /* ArgumentParser in Frameworks */,
+				7B0BFD3A2E1C531200C89010 /* SwiftyTextTable in Frameworks */,
+				7B0BFD3D2E1C534000C89010 /* Markdown in Frameworks */,
+				7B0BFD312E1C520B00C89010 /* SwiftOpenAI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -77,6 +90,11 @@
 			);
 			name = SwiftOpenAICLI;
 			packageProductDependencies = (
+				7B0BFD302E1C520B00C89010 /* SwiftOpenAI */,
+				7B0BFD332E1C521F00C89010 /* ArgumentParser */,
+				7B0BFD362E1C523600C89010 /* Rainbow */,
+				7B0BFD392E1C531200C89010 /* SwiftyTextTable */,
+				7B0BFD3C2E1C534000C89010 /* Markdown */,
 			);
 			productName = SwiftOpenAICLI;
 			productReference = 7B0BFD252E1C50E100C89010 /* SwiftOpenAICLI */;
@@ -106,6 +124,13 @@
 			);
 			mainGroup = 7B0BFD1C2E1C50E100C89010;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				7B0BFD2F2E1C520B00C89010 /* XCRemoteSwiftPackageReference "SwiftOpenAI" */,
+				7B0BFD322E1C521F00C89010 /* XCRemoteSwiftPackageReference "swift-argument-parser" */,
+				7B0BFD352E1C523600C89010 /* XCRemoteSwiftPackageReference "Rainbow" */,
+				7B0BFD382E1C531200C89010 /* XCRemoteSwiftPackageReference "SwiftyTextTable" */,
+				7B0BFD3B2E1C534000C89010 /* XCRemoteSwiftPackageReference "swift-markdown" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 7B0BFD262E1C50E100C89010 /* Products */;
 			projectDirPath = "";
@@ -293,6 +318,77 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		7B0BFD2F2E1C520B00C89010 /* XCRemoteSwiftPackageReference "SwiftOpenAI" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/jamesrochabrun/SwiftOpenAI.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.0;
+			};
+		};
+		7B0BFD322E1C521F00C89010 /* XCRemoteSwiftPackageReference "swift-argument-parser" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-argument-parser.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.6.1;
+			};
+		};
+		7B0BFD352E1C523600C89010 /* XCRemoteSwiftPackageReference "Rainbow" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/onevcat/Rainbow.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 4.1.0;
+			};
+		};
+		7B0BFD382E1C531200C89010 /* XCRemoteSwiftPackageReference "SwiftyTextTable" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/scottrhoyt/SwiftyTextTable.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.9.0;
+			};
+		};
+		7B0BFD3B2E1C534000C89010 /* XCRemoteSwiftPackageReference "swift-markdown" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-markdown.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.6.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		7B0BFD302E1C520B00C89010 /* SwiftOpenAI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 7B0BFD2F2E1C520B00C89010 /* XCRemoteSwiftPackageReference "SwiftOpenAI" */;
+			productName = SwiftOpenAI;
+		};
+		7B0BFD332E1C521F00C89010 /* ArgumentParser */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 7B0BFD322E1C521F00C89010 /* XCRemoteSwiftPackageReference "swift-argument-parser" */;
+			productName = ArgumentParser;
+		};
+		7B0BFD362E1C523600C89010 /* Rainbow */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 7B0BFD352E1C523600C89010 /* XCRemoteSwiftPackageReference "Rainbow" */;
+			productName = Rainbow;
+		};
+		7B0BFD392E1C531200C89010 /* SwiftyTextTable */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 7B0BFD382E1C531200C89010 /* XCRemoteSwiftPackageReference "SwiftyTextTable" */;
+			productName = SwiftyTextTable;
+		};
+		7B0BFD3C2E1C534000C89010 /* Markdown */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 7B0BFD3B2E1C534000C89010 /* XCRemoteSwiftPackageReference "swift-markdown" */;
+			productName = Markdown;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 7B0BFD1D2E1C50E100C89010 /* Project object */;
 }
