@@ -1,5 +1,7 @@
 # SwiftOpenAI-CLI
 
+[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](https://github.com/jamesrochabrun/SwiftOpenAICLI/releases)
+
 <img width="1090" height="680" alt="Image" src="https://github.com/user-attachments/assets/4c4dbbea-c557-43a2-8a5d-fdcad9987510" />
 
 ![macOS 13+](https://img.shields.io/badge/macOS-13%2B-blue.svg)
@@ -11,6 +13,7 @@ A command-line interface for interacting with OpenAI's API, built with Swift.
 ## Features
 
 - 💬 **Chat** - Interactive conversations with GPT models
+- 🚀 **GPT-5 Support** - Advanced reasoning and verbosity controls for GPT-5 models
 - 🖼️ **Image Generation** - Generate images with AI models
 - 📊 **Models** - List and filter available models
 - 🔤 **Completions** - Generate text completions
@@ -141,6 +144,10 @@ swiftopenai chat --interactive --plain
 # With specific model
 swiftopenai chat --model gpt-4o "Explain quantum computing"
 
+# With GPT-5 models (supports both formats)
+swiftopenai chat --model gpt5 "Write a function" --reasoning minimal
+swiftopenai chat --model gpt-5-mini "Explain this concept" --verbose high
+
 # With system prompt
 swiftopenai chat --system "You are a helpful assistant" "How do I sort an array?"
 ```
@@ -193,9 +200,51 @@ swiftopenai config get default-model
 swiftopenai config list
 ```
 
+### GPT-5 Models
+
+SwiftOpenAI-CLI now supports GPT-5 models with advanced reasoning and verbosity controls. The CLI automatically normalizes model names for convenience:
+
+#### Supported Model Names
+- `gpt5` or `gpt-5` - Complex reasoning, broad world knowledge, and code-heavy or multi-step agentic tasks
+- `gpt5mini` or `gpt-5-mini` - Cost-optimized reasoning and chat; balances speed, cost, and capability
+- `gpt5nano` or `gpt-5-nano` - High-throughput tasks, especially simple instruction-following or classification
+
+```bash
+# Fast coding assistance with minimal reasoning
+swiftopenai "Write a Python function to sort a list" --model gpt5 --reasoning minimal --verbose low
+
+# Detailed explanations with thorough reasoning
+swiftopenai "Explain quantum entanglement" --model gpt-5 --reasoning high --verbose high
+
+# Cost-optimized with balanced settings
+swiftopenai "Help me debug this code" --model gpt5mini --reasoning medium --verbose medium
+
+# High-throughput simple tasks
+swiftopenai "Classify this text as positive or negative" --model gpt5nano --reasoning minimal --verbose low
+
+# Interactive mode with GPT-5 Mini
+swiftopenai chat --interactive --model gpt-5-mini --reasoning minimal
+```
+
+#### Verbosity Levels
+- `low` - Concise responses with minimal detail
+- `medium` - Balanced responses (default)
+- `high` - Detailed, comprehensive responses
+
+#### Reasoning Effort
+- `minimal` - Very few reasoning tokens for fastest response (great for coding and instructions)
+- `low` - Light reasoning for simple tasks
+- `medium` - Balanced reasoning (default)
+- `high` - Thorough reasoning for complex problems
+
+**Notes:**
+- The `--verbose` and `--reasoning` parameters only apply to GPT-5 family models
+- Model names are case-insensitive and hyphens are optional (e.g., `gpt5`, `GPT5`, `gpt-5` all work)
+- The CLI automatically normalizes model names to the correct API format
+
 ### Using Alternative Providers
 
-SwiftOpenAI-CLI supports any OpenAI-compatible API providers. Built with SwiftOpenAI v4.3.1, it can connect to providers like Grok, Groq, OpenRouter, DeepSeek, and more. Configure the CLI to use these providers:
+SwiftOpenAI-CLI supports any OpenAI-compatible API providers. Built with [SwiftOpenAI v4.3.2](https://github.com/jamesrochabrun/SwiftOpenAI), it can connect to providers like Grok, Groq, OpenRouter, DeepSeek, and more. Configure the CLI to use these providers:
 
 **Note:** When using alternative providers, use the `--model` flag with the provider's specific model names. For example:
 - OpenRouter: `anthropic/claude-3.5-sonnet`, `openai/gpt-4`, `google/gemini-pro`
@@ -319,6 +368,8 @@ When debug mode is enabled and the CLI is built in debug configuration, you'll s
 - `--temperature` - Temperature (0.0-2.0)
 - `--max-tokens` - Maximum tokens to generate
 - `--no-stream` - Disable streaming response
+- `--verbose` - Verbosity level for GPT-5 models (`low`, `medium`, `high`) - default: `medium`
+- `--reasoning` - Reasoning effort for GPT-5 models (`minimal`, `low`, `medium`, `high`) - default: `medium`
 
 ### Image Options
 - `-n, --number` - Number of images (1-10, dall-e-3 only supports 1)
@@ -330,6 +381,19 @@ When debug mode is enabled and the CLI is built in debug configuration, you'll s
 - `--output` - Output directory for saving images
 
 ## Examples
+
+### GPT-5 Examples
+```bash
+# Using different GPT-5 models (with or without hyphens)
+$ swiftopenai "Generate a sorting algorithm" --model gpt5 --reasoning high
+$ swiftopenai "Summarize this text" --model gpt5mini --verbose low
+$ swiftopenai "Yes or No?" --model gpt5nano --reasoning minimal
+
+# The CLI normalizes these model names automatically:
+# gpt5 → gpt-5
+# gpt5mini → gpt-5-mini  
+# gpt5nano → gpt-5-nano
+```
 
 ### Interactive Chat Session
 ```bash

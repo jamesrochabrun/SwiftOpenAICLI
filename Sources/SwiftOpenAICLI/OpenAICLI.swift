@@ -11,7 +11,7 @@ struct OpenAICLI: AsyncParsableCommand {
             - For debug output: Build with `swift build` (debug mode)
             - For production: Build with `swift build -c release`
             """,
-        version: "1.1.0",
+        version: "1.2.0",
         subcommands: [
             ChatCommand.self,
             ImageCommand.self,

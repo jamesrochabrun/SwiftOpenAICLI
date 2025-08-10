@@ -42,8 +42,30 @@ class OpenAIService {
         return service!
     }
     
-    func chat(message: String, model: String, system: String? = nil, temperature: Double = 1.0, maxTokens: Int? = nil, stream: Bool = true, plain: Bool = false) async throws {
+    /// Normalizes model names to match OpenAI API expectations
+    /// Maps common aliases to official model names (e.g., gpt5 → gpt-5)
+    private func normalizeModelName(_ model: String) -> String {
+        let lowercased = model.lowercased()
+        
+        // GPT-5 model aliases
+        switch lowercased {
+        case "gpt5":
+            return "gpt-5"
+        case "gpt5mini", "gpt5-mini":
+            return "gpt-5-mini"
+        case "gpt5nano", "gpt5-nano":
+            return "gpt-5-nano"
+        default:
+            // Return the original model name for all other models
+            return model
+        }
+    }
+    
+    func chat(message: String, model: String, system: String? = nil, temperature: Double = 1.0, maxTokens: Int? = nil, stream: Bool = true, plain: Bool = false, verbose: String = "medium", reasoning: String = "medium") async throws {
         let openAI = try getService()
+        
+        // Normalize the model name
+        let normalizedModel = normalizeModelName(model)
         
         var messages: [ChatCompletionParameters.Message] = []
         
@@ -53,12 +75,21 @@ class OpenAIService {
         
         messages.append(.init(role: .user, content: .text(message)))
         
-        let parameters = ChatCompletionParameters(
+        // Check if this is a GPT-5 model (using normalized name for consistency)
+        let isGPT5Model = normalizedModel.lowercased().contains("gpt-5")
+        
+        var parameters = ChatCompletionParameters(
             messages: messages,
-            model: .custom(model),
+            model: .custom(normalizedModel),
             maxTokens: maxTokens,
             temperature: temperature
         )
+        
+        // Add verbosity and reasoning parameters for GPT-5 models
+        if isGPT5Model {
+            parameters.verbosity = verbose
+            parameters.reasoningEffort = reasoning
+        }
         
         if stream {
             if !plain {
