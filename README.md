@@ -2,7 +2,7 @@
 
 [![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](https://github.com/jamesrochabrun/SwiftOpenAICLI/releases)
 
-<img width="1090" alt="repoOpenAI" src="https://github.com/user-attachments/assets/693325f3-b633-49c8-98ac-7c8b25b29a6c">
+<img width="1090" height="680" alt="Image" src="https://github.com/user-attachments/assets/4c4dbbea-c557-43a2-8a5d-fdcad9987510" />
 
 ![macOS 13+](https://img.shields.io/badge/macOS-13%2B-blue.svg)
 ![Linux](https://img.shields.io/badge/Linux-blue.svg)
@@ -434,6 +434,10 @@ The answer is: 4
 $ swiftopenai "What is 2+2?"
 Assistant: 4
 ```
+
+## Using it with Claude Code
+
+https://github.com/user-attachments/assets/3fa87fe1-e672-4ade-9255-ce53b1301081
 
 ## Requirements
 
