@@ -27,6 +27,12 @@ struct CompleteCommand: AsyncParsableCommand {
     @Flag(name: .long, help: "Show token usage")
     var showTokens = false
     
+    @Option(name: .long, help: "Verbosity level for GPT-5 models (low, medium, high)")
+    var verbose: VerbosityLevel = .medium
+    
+    @Option(name: .long, help: "Reasoning effort for GPT-5 models (minimal, low, medium, high)")
+    var reasoning: ReasoningEffort = .medium
+    
     mutating func run() async throws {
         print("Generating completion...".cyan)
         
@@ -41,7 +47,10 @@ struct CompleteCommand: AsyncParsableCommand {
                     model: model,
                     temperature: temperature,
                     maxTokens: maxTokens,
-                    stream: false
+                    stream: false,
+                    plain: false,
+                    verbose: verbose.rawValue,
+                    reasoning: reasoning.rawValue
                 )
             }
         } catch {

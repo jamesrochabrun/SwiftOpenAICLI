@@ -36,6 +36,12 @@ struct ChatCommand: AsyncParsableCommand {
     @Option(name: .long, help: "Output format (plain, json, markdown)")
     var format: OutputFormat = .plain
     
+    @Option(name: .long, help: "Verbosity level for GPT-5 models (low, medium, high)")
+    var verbose: VerbosityLevel = .medium
+    
+    @Option(name: .long, help: "Reasoning effort for GPT-5 models (minimal, low, medium, high)")
+    var reasoning: ReasoningEffort = .medium
+    
     mutating func run() async throws {
         if interactive {
             try await runInteractiveMode()
@@ -47,7 +53,9 @@ struct ChatCommand: AsyncParsableCommand {
                 temperature: temperature,
                 maxTokens: maxTokens,
                 stream: !noStream,
-                plain: plain
+                plain: plain,
+                verbose: verbose.rawValue,
+                reasoning: reasoning.rawValue
             )
         } else {
             print("Please provide a message or use --interactive flag".red)
@@ -90,7 +98,9 @@ struct ChatCommand: AsyncParsableCommand {
                     temperature: temperature,
                     maxTokens: maxTokens,
                     stream: !noStream,
-                    plain: plain
+                    plain: plain,
+                    verbose: verbose.rawValue,
+                    reasoning: reasoning.rawValue
                 )
                 print() // Add spacing
             } catch {
