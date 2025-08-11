@@ -102,14 +102,41 @@ swift build -c release  # Release mode (recommended)
 
 ## Updating
 
+### For npm installations
+
+Check if an update is available:
+```bash
+npm outdated -g swiftopenai-cli
+```
+
+Update to the latest version:
 ```bash
 npm update -g swiftopenai-cli
 ```
 
-To check your current version:
+Or force update to the latest version:
+```bash
+npm install -g swiftopenai-cli@latest
+```
+
+### For source builds
+
+Pull the latest changes and rebuild:
+```bash
+cd SwiftOpenAICLI
+git pull
+swift build -c release
+cp .build/release/swiftopenai /usr/local/bin/
+```
+
+### Verify your version
+
+After updating, confirm the new version:
 ```bash
 swiftopenai --version
 ```
+
+**Note:** Check the [releases page](https://github.com/jamesrochabrun/SwiftOpenAICLI/releases) for any breaking changes before updating.
 
 ## Configuration
 
