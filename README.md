@@ -13,6 +13,7 @@ A command-line interface for interacting with OpenAI's API, built with Swift.
 ## Features
 
 - 💬 **Chat** - Interactive conversations with GPT models
+- 🤖 **Agent Mode** - Tool-calling AI agent with memory and auto-compaction
 - 🚀 **GPT-5 Support** - Advanced reasoning and verbosity controls for GPT-5 models
 - 🖼️ **Image Generation** - Generate images with AI models
 - 📊 **Models** - List and filter available models
@@ -177,6 +178,132 @@ swiftopenai chat --model gpt-5-mini "Explain this concept" --verbose high
 
 # With system prompt
 swiftopenai chat --system "You are a helpful assistant" "How do I sort an array?"
+```
+
+### Agent Mode 🤖
+
+AI agent with tool-calling capabilities, conversation memory, and auto-compaction for infinite conversations.
+
+#### Basic Usage
+
+```bash
+# Simple agent command (uses GPT-5 by default)
+swiftopenai agent "Calculate 25 * 37 and tell me what day it is today"
+
+# With specific model
+swiftopenai agent "What's the weather like?" --model gpt-4o-mini
+
+# Interactive agent mode
+swiftopenai agent --interactive
+
+# Interactive with tool events visible
+swiftopenai agent --interactive --show-tool-events
+
+# Specify which tools to enable
+swiftopenai agent "Read the config.json file" --tools file_reader
+```
+
+#### Advanced Usage
+
+```bash
+# Stream JSON events (like Claude SDK)
+swiftopenai agent "Calculate the square root of 144" --output-format stream-json
+
+# With session ID for conversation continuity
+swiftopenai agent "My name is Alice" --session-id abc123
+swiftopenai agent "What's my name?" --session-id abc123  # Remembers Alice
+
+# GPT-5 with verbosity and reasoning controls
+swiftopenai agent "Explain quantum computing" --model gpt-5 --model-verbosity high --reasoning high
+
+# Multiple tools with JSON output
+swiftopenai agent "Calculate 100/7 and tell me the date 15 days from now" \
+  --tools calculator,datetime \
+  --output-format json
+
+# With custom system prompt
+swiftopenai agent "Help me debug this" \
+  --system "You are an expert programmer" \
+  --model gpt-5-mini
+```
+
+#### Built-in Tools
+
+**Calculator** - Mathematical expressions
+- Operations: `+`, `-`, `*`, `/`, `^`, `sqrt`, `sin`, `cos`, `tan`, `log`
+- Example: `"Calculate (100 + 50) * 3"`
+
+**DateTime** - Date and time operations  
+- Current date/time
+- Add days to current date
+- Format dates
+- Example: `"What day will it be 10 days from now?"`
+
+**FileReader** - Read local files
+- Read entire file or specific lines
+- Supports relative and absolute paths
+- Example: `"Read the first 50 lines of README.md"`
+
+#### Output Formats
+
+- `plain` (default) - Human-readable output with colored formatting
+- `json` - Structured JSON response with metadata
+- `stream-json` - Event stream for each tool call and response (Claude SDK style)
+
+#### Interactive Mode Features
+
+```bash
+swiftopenai agent --interactive --model gpt-5 --show-tool-events
+```
+
+- **Conversation Memory** - Maintains context within session
+- **Auto-Compaction** - Automatically summarizes long conversations at 92% capacity
+- **Context Warnings** - Shows capacity usage (e.g., "💭 85% capacity (7% until auto-compacting)")
+- **Commands**:
+  - `clear` - Reset conversation history
+  - `exit` or `quit` - Exit interactive mode
+  - `Ctrl+C` - Interrupt and exit
+  - `Ctrl+D` - EOF exit
+
+#### Session Management
+
+```bash
+# Start new conversation
+swiftopenai agent "Hello, I'm working on a Swift project" --session-id work-session
+
+# Continue conversation (remembers context)
+swiftopenai agent "What language did I mention?" --session-id work-session
+
+# Auto-compaction keeps conversations infinite
+# When reaching context limit, automatically summarizes with GPT-5-mini/gpt-4o-mini
+```
+
+#### Context Windows
+
+- **GPT-5 models**: 400K tokens
+- **GPT-4o models**: 128K tokens
+- Auto-compaction triggers at 92% capacity
+- Fallback chain: GPT-5-mini → gpt-4o-mini → gpt-3.5-turbo
+
+#### Real-World Examples
+
+```bash
+# Complex multi-tool task
+swiftopenai agent "Calculate the compound interest on $1000 at 5% for 3 years, and tell me what date that will be from today"
+
+# Code analysis with file reading
+swiftopenai agent "Read the Package.swift file and explain what dependencies this project uses" --tools file_reader
+
+# Interactive problem-solving session
+swiftopenai agent --interactive --model gpt-5 --show-tool-events
+# You: I need to plan a project that starts today
+# You: Calculate how many work days are in the next 30 days
+# You: What's the date 30 days from now?
+
+# Production monitoring with JSON output
+swiftopenai agent "Check the current time and calculate server uptime percentage if it's been running for 720 hours out of 744 hours this month" \
+  --output-format json \
+  --tools calculator,datetime
 ```
 
 ### Image Generation
