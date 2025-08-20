@@ -33,8 +33,14 @@ struct AgentCommand: AsyncParsableCommand {
   @Option(name: .long, help: "Session ID for resuming conversations")
   var sessionId: String?
   
-  @Option(name: .long, help: "Enable specific tools (comma-separated: calculator,file_reader,datetime)")
-  var tools: String = "calculator,datetime"
+  @Option(name: .long, help: "Reserved for future use (MCP tools are automatically available)")
+  var tools: String = ""
+  
+  @Option(name: .long, help: "Enable specific MCP servers (comma-separated names from config)")
+  var mcpServers: String?
+  
+  @Option(name: .long, help: "Explicit list of allowed tools (overrides --tools and MCP auto-discovery). Use glob patterns like 'mcp__*' or 'mcp__github__*'")
+  var allowedTools: String?
   
   @Flag(name: [.short, .long], help: "Interactive agent mode")
   var interactive = false
@@ -45,6 +51,9 @@ struct AgentCommand: AsyncParsableCommand {
   @Flag(name: .long, help: "Show tool events in interactive mode")
   var showToolEvents = false
   
+  @Flag(name: .long, help: "Show MCP connection status")
+  var showMCPStatus = false
+  
   @Option(name: .long, help: "Verbosity level for GPT-5 models (low, medium, high)")
   var modelVerbosity: VerbosityLevel = .medium
   
@@ -52,8 +61,20 @@ struct AgentCommand: AsyncParsableCommand {
   var reasoning: ReasoningEffort = .medium
   
   mutating func run() async throws {
+    let mcpConfigs = try loadMCPServers()
+    
+    // Determine which tools to enable
+    let enabledTools: Set<String>?
+    if let allowedTools = allowedTools {
+      // Use explicit allowed tools list with pattern matching
+      enabledTools = parseAllowedTools(allowedTools)
+    } else {
+      // Use the default tools list
+      enabledTools = parseTools(tools)
+    }
+    
     if interactive {
-      try await runInteractiveMode()
+      try await runInteractiveMode(mcpConfigs: mcpConfigs, enabledTools: enabledTools)
     } else if let message = message {
       try await OpenAIService.shared.agentChat(
         message: message,
@@ -62,10 +83,11 @@ struct AgentCommand: AsyncParsableCommand {
         temperature: temperature,
         maxTokens: maxTokens,
         outputFormat: outputFormat,
-        enabledTools: parseTools(tools),
+        enabledTools: enabledTools,
         verbose: modelVerbosity.rawValue,
         reasoning: reasoning.rawValue,
-        sessionId: sessionId
+        sessionId: sessionId,
+        mcpServers: mcpConfigs
       )
     } else {
       print("Please provide a message or use --interactive flag".red)
@@ -78,7 +100,39 @@ struct AgentCommand: AsyncParsableCommand {
     return Set(toolNames)
   }
   
-  private func runInteractiveMode() async throws {
+  private func parseAllowedTools(_ patterns: String) -> Set<String>? {
+    // Return nil to indicate "use all matching patterns"
+    // The actual pattern matching will be done in ToolExecutor
+    let patterns = patterns.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+    return Set(patterns)
+  }
+  
+  private func loadMCPServers() throws -> [MCPServerConfig] {
+    guard let mcpServers = mcpServers else { return [] }
+    
+    let configManager = ConfigurationManager.shared
+    let config = configManager.getConfiguration()
+    
+    let requestedServers = Set(mcpServers.split(separator: ",").map { String($0.trimmingCharacters(in: .whitespaces)) })
+    
+    var configs: [MCPServerConfig] = []
+    
+    if let serverDefs = config.mcpServers {
+      for serverDef in serverDefs.allServers {
+        if let serverName = serverDef.name,
+           requestedServers.contains(serverName) && (serverDef.enabled ?? true) {
+          configs.append(serverDef.toMCPServerConfig)
+          if showMCPStatus {
+            print("🔌 Enabling MCP server: \(serverName)".lightBlack)
+          }
+        }
+      }
+    }
+    
+    return configs
+  }
+  
+  private func runInteractiveMode(mcpConfigs: [MCPServerConfig] = [], enabledTools: Set<String>? = nil) async throws {
     // Check if we're in a proper terminal
 #if os(macOS) || os(Linux)
     guard isatty(STDIN_FILENO) != 0 else {
@@ -94,8 +148,18 @@ struct AgentCommand: AsyncParsableCommand {
       throw ExitCode.failure
     }
     
+    // Create persistent ToolExecutor for the session
+    let toolExecutor = ToolExecutor(mcpServers: mcpConfigs, verbose: true)
+    await toolExecutor.initialize()
+    
     print("🤖 OpenAI Agent Mode (\(model))".cyan)
-    print("Enabled tools: \(tools)".lightBlack)
+    if let allowedTools = allowedTools {
+      print("Allowed tools: \(allowedTools)".lightBlack)
+    }
+    if !mcpConfigs.isEmpty {
+      print("MCP servers: \(mcpConfigs.map { $0.name }.joined(separator: ", "))".lightBlack)
+      print("🚀 MCP servers initialized once for this session".green)
+    }
     if showToolEvents {
       print("Tool events: ON".lightBlack)
     }
@@ -110,6 +174,7 @@ struct AgentCommand: AsyncParsableCommand {
     var currentSessionId = UUID().uuidString
     
     // Set up signal handler for graceful exit
+    // Note: Can't capture toolExecutor in signal handler, so cleanup happens in normal exit paths
     signal(SIGINT) { _ in
       print("\n\nInterrupted. Goodbye!".yellow)
       Darwin.exit(0)
@@ -122,7 +187,9 @@ struct AgentCommand: AsyncParsableCommand {
       // Handle EOF (Ctrl+D) and read input
       guard let input = readLine() else {
         // EOF detected (Ctrl+D)
-        print("\nGoodbye!".yellow)
+        print("\nCleaning up MCP connections...".yellow)
+        await toolExecutor.cleanup()
+        print("Goodbye!".yellow)
         break
       }
       
@@ -136,6 +203,8 @@ struct AgentCommand: AsyncParsableCommand {
       
       // Check for exit command
       if trimmedInput.lowercased() == "exit" || trimmedInput.lowercased() == "quit" {
+        print("Cleaning up MCP connections...".yellow)
+        await toolExecutor.cleanup()
         print("Goodbye!".yellow)
         break
       }
@@ -156,14 +225,15 @@ struct AgentCommand: AsyncParsableCommand {
       
       do {
         let format = showToolEvents ? "interactive-stream" : "plain"
-        try await OpenAIService.shared.agentChat(
+        try await OpenAIService.shared.agentChatWithExecutor(
           message: trimmedInput,
           model: model,
+          toolExecutor: toolExecutor,
           system: system,
           temperature: temperature,
           maxTokens: maxTokens,
           outputFormat: format,
-          enabledTools: parseTools(tools),
+          enabledTools: enabledTools,
           verbose: modelVerbosity.rawValue,
           reasoning: reasoning.rawValue,
           sessionId: currentSessionId
@@ -183,6 +253,9 @@ struct AgentCommand: AsyncParsableCommand {
         // Continue the session despite errors
       }
     }
+    
+    // Cleanup MCP connections when exiting
+    await toolExecutor.cleanup()
     
     // Reset signal handler
     signal(SIGINT, SIG_DFL)

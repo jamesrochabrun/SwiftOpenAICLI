@@ -171,9 +171,30 @@ final class OpenAIService {
     return response.data.first?.embedding ?? []
   }
   
-  func agentChat(message: String, model: String, system: String? = nil, temperature: Double = 1.0, maxTokens: Int? = nil, outputFormat: String = "plain", enabledTools: Set<String>, verbose: String = "medium", reasoning: String = "medium", sessionId: String? = nil) async throws {
+  func agentChat(message: String, model: String, system: String? = nil, temperature: Double = 1.0, maxTokens: Int? = nil, outputFormat: String = "plain", enabledTools: Set<String>?, verbose: String = "medium", reasoning: String = "medium", sessionId: String? = nil, mcpServers: [MCPServerConfig] = []) async throws {
+    let toolExecutor = ToolExecutor(mcpServers: mcpServers, verbose: outputFormat == "plain")
+    
+    // Initialize MCP servers if any
+    await toolExecutor.initialize()
+    
+    // Delegate to the executor-based method
+    try await agentChatWithExecutor(
+      message: message,
+      model: model,
+      toolExecutor: toolExecutor,
+      system: system,
+      temperature: temperature,
+      maxTokens: maxTokens,
+      outputFormat: outputFormat,
+      enabledTools: enabledTools,
+      verbose: verbose,
+      reasoning: reasoning,
+      sessionId: sessionId
+    )
+  }
+  
+  func agentChatWithExecutor(message: String, model: String, toolExecutor: ToolExecutor, system: String? = nil, temperature: Double = 1.0, maxTokens: Int? = nil, outputFormat: String = "plain", enabledTools: Set<String>?, verbose: String = "medium", reasoning: String = "medium", sessionId: String? = nil) async throws {
     let openAI = try getService()
-    let toolExecutor = ToolExecutor()
     
     let normalizedModel = normalizeModelName(model)
     let isGPT5Model = normalizedModel.lowercased().contains("gpt-5")
@@ -259,7 +280,7 @@ final class OpenAIService {
         "subtype": "init",
         "session_id": session,
         "model": normalizedModel,
-        "tools": Array(enabledTools),
+        "tools": enabledTools != nil ? Array(enabledTools!) : [],
         "cwd": FileManager.default.currentDirectoryPath
       ]
       if let jsonData = try? JSONSerialization.data(withJSONObject: initEvent, options: []),

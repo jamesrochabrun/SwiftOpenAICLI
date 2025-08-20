@@ -117,6 +117,15 @@ class ConfigurationManager {
         return items
     }
     
+    func getConfiguration() -> Configuration {
+        return configuration
+    }
+    
+    func updateConfiguration(_ newConfig: Configuration) throws {
+        configuration = newConfig
+        try saveConfiguration()
+    }
+    
     private func saveConfiguration() throws {
         let encoder = JSONEncoder()
         encoder.outputFormatting = .prettyPrinted

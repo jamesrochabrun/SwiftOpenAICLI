@@ -4,29 +4,80 @@ import Rainbow
 
 class ToolExecutor {
   private var availableTools: [String: CLITool] = [:]
+  private var mcpClient: MCPClient?
+  private var mcpServers: [MCPServerConfig] = []
   
-  init() {
-    registerBuiltInTools()
+  init(mcpServers: [MCPServerConfig] = [], verbose: Bool = false) {
+    self.mcpServers = mcpServers
   }
   
-  private func registerBuiltInTools() {
-    let calculator = CalculatorTool()
-    let dateTime = DateTimeTool()
-    let fileReader = FileReaderTool()
+  func initialize() async {
+    if !mcpServers.isEmpty {
+      await initializeMCPServers(verbose: mcpServers.isEmpty ? false : true)
+    }
+  }
+  
+  
+  func getAllAvailableToolNames() -> Set<String> {
+    return Set(availableTools.keys)
+  }
+  
+  func getToolDefinitions(for toolNames: Set<String>?) -> [ChatCompletionParameters.Tool] {
+    var effectiveToolNames = Set<String>()
     
-    availableTools[calculator.name] = calculator
-    availableTools[dateTime.name] = dateTime
-    availableTools[fileReader.name] = fileReader
-  }
-  
-  func getToolDefinitions(for toolNames: Set<String>) -> [ChatCompletionParameters.Tool] {
-    return toolNames.compactMap { name in
+    if let toolNames = toolNames {
+      // Process each pattern in toolNames
+      for pattern in toolNames {
+        if pattern.contains("*") {
+          // Handle glob patterns
+          let regex = patternToRegex(pattern)
+          for toolName in availableTools.keys {
+            if toolName.range(of: regex, options: .regularExpression) != nil {
+              effectiveToolNames.insert(toolName)
+            }
+          }
+        } else {
+          // Exact match
+          if availableTools[pattern] != nil {
+            effectiveToolNames.insert(pattern)
+          }
+        }
+      }
+    } else {
+      // No specific tools requested, include all MCP tools
+      for toolName in availableTools.keys {
+        if toolName.hasPrefix("mcp__") {
+          effectiveToolNames.insert(toolName)
+        }
+      }
+    }
+    
+    return effectiveToolNames.compactMap { name in
       guard let tool = availableTools[name] else { return nil }
       return ChatCompletionParameters.Tool(
         type: "function",
         function: tool.toChatFunction()
       )
     }
+  }
+  
+  private func patternToRegex(_ pattern: String) -> String {
+    // Convert glob pattern to regex
+    var regex = "^"
+    for char in pattern {
+      switch char {
+      case "*":
+        regex += ".*"
+      case "?":
+        regex += "."
+      case ".":
+        regex += "\\."
+      default:
+        regex += String(char)
+      }
+    }
+    regex += "$"
+    return regex
   }
   
   func executeTool(name: String, arguments: String, outputFormat: String = "plain") async throws -> String {
@@ -50,10 +101,84 @@ class ToolExecutor {
   }
   
   func printAvailableTools() {
-    print("Available tools:".cyan)
-    for (name, tool) in availableTools.sorted(by: { $0.key < $1.key }) {
-      print("  • \(name): \(tool.description)".lightBlack)
+    print("Available MCP tools:".cyan)
+    
+    let mcpTools = availableTools.filter { $0.key.hasPrefix("mcp__") }
+    if !mcpTools.isEmpty {
+      for (name, tool) in mcpTools.sorted(by: { $0.key < $1.key }) {
+        print("  • \(name): \(tool.description)".lightBlack)
+      }
+    } else {
+      print("  No MCP tools available. Configure MCP servers to add tools.".yellow)
     }
+  }
+  
+  private func initializeMCPServers(verbose: Bool) async {
+    mcpClient = MCPClient(verbose: verbose)
+    
+    for server in mcpServers {
+      do {
+        try await mcpClient?.connectToServer(server)
+        await registerMCPTools(from: server.name)
+      } catch {
+        if verbose {
+          print("⚠️  Failed to connect to MCP server '\(server.name)': \(error.localizedDescription)".yellow)
+        }
+      }
+    }
+  }
+  
+  private func registerMCPTools(from serverName: String) async {
+    guard let mcpClient = mcpClient else { return }
+    
+    do {
+      let tools = try await mcpClient.getAvailableTools()
+      
+      for (toolKey, mcpTool) in tools {
+        if toolKey.hasPrefix("\(serverName).") {
+          let adapter = MCPToolAdapter(
+            serverName: serverName,
+            tool: mcpTool,
+            mcpClient: mcpClient
+          )
+          // Use the sanitized name from the adapter (mcp__serverName__toolName)
+          availableTools[adapter.name] = adapter
+          print("   Registered tool: \(adapter.name)".lightBlack)
+        }
+      }
+    } catch {
+      print("⚠️  Failed to register tools from '\(serverName)': \(error.localizedDescription)".yellow)
+    }
+  }
+  
+  func connectMCPServer(_ config: MCPServerConfig, verbose: Bool = false) async throws {
+    if mcpClient == nil {
+      mcpClient = MCPClient(verbose: verbose)
+    }
+    
+    try await mcpClient?.connectToServer(config)
+    await registerMCPTools(from: config.name)
+  }
+  
+  func disconnectMCPServer(_ name: String) async {
+    await mcpClient?.disconnectFromServer(name)
+    
+    availableTools = availableTools.filter { !$0.key.hasPrefix("mcp__\(name)__") }
+  }
+  
+  func cleanup() async {
+    // Disconnect all MCP servers gracefully
+    if let mcpClient = mcpClient {
+      await mcpClient.disconnectAll()
+    }
+    
+    // Clear all MCP tools from available tools
+    availableTools = availableTools.filter { !$0.key.hasPrefix("mcp__") }
+  }
+  
+  deinit {
+    // Don't create Task in deinit - it causes retain cycle
+    // The MCPClient actor will clean up on its own deallocation
   }
   
 }

@@ -9,7 +9,8 @@ struct ConfigCommand: ParsableCommand {
         subcommands: [
             SetCommand.self,
             GetCommand.self,
-            ListCommand.self
+            ListCommand.self,
+            MCPConfigCommand.self
         ]
     )
 }

@@ -1,6 +1,6 @@
 # SwiftOpenAI-CLI
 
-[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](https://github.com/jamesrochabrun/SwiftOpenAICLI/releases)
+[![Version](https://img.shields.io/badge/version-1.4.0-blue.svg)](https://github.com/jamesrochabrun/SwiftOpenAICLI/releases)
 
 <img width="1090" height="680" alt="Image" src="https://github.com/user-attachments/assets/4c4dbbea-c557-43a2-8a5d-fdcad9987510" />
 
@@ -13,7 +13,8 @@ A command-line interface for interacting with OpenAI's API, built with Swift.
 ## Features
 
 - 💬 **Chat** - Interactive conversations with GPT models
-- 🤖 **Agent Mode** - Tool-calling AI agent with memory and auto-compaction
+- 🤖 **Agent Mode** - AI agent with MCP tool integration and conversation memory
+- 🔌 **MCP Integration** - Connect to GitHub, databases, Slack, and more via Model Context Protocol
 - 🚀 **GPT-5 Support** - Advanced reasoning and verbosity controls for GPT-5 models
 - 🖼️ **Image Generation** - Generate images with AI models
 - 📊 **Models** - List and filter available models
@@ -182,7 +183,7 @@ swiftopenai chat --system "You are a helpful assistant" "How do I sort an array?
 
 ### Agent Mode 🤖
 
-AI agent with tool-calling capabilities, conversation memory, and auto-compaction for infinite conversations.
+AI agent with MCP (Model Context Protocol) integration for external tools, conversation memory, and auto-compaction for infinite conversations.
 
 #### Basic Usage
 
@@ -199,8 +200,8 @@ swiftopenai agent --interactive
 # Interactive with tool events visible
 swiftopenai agent --interactive --show-tool-events
 
-# Specify which tools to enable
-swiftopenai agent "Read the config.json file" --tools file_reader
+# Use with MCP servers for tools
+swiftopenai agent "Read the config.json file" --mcp-servers filesystem
 ```
 
 #### Advanced Usage
@@ -216,9 +217,9 @@ swiftopenai agent "What's my name?" --session-id abc123  # Remembers Alice
 # GPT-5 with verbosity and reasoning controls
 swiftopenai agent "Explain quantum computing" --model gpt-5 --model-verbosity high --reasoning high
 
-# Multiple tools with JSON output
-swiftopenai agent "Calculate 100/7 and tell me the date 15 days from now" \
-  --tools calculator,datetime \
+# MCP tools with JSON output
+swiftopenai agent "Query the database for recent orders" \
+  --mcp-servers postgres \
   --output-format json
 
 # With custom system prompt
@@ -226,23 +227,6 @@ swiftopenai agent "Help me debug this" \
   --system "You are an expert programmer" \
   --model gpt-5-mini
 ```
-
-#### Built-in Tools
-
-**Calculator** - Mathematical expressions
-- Operations: `+`, `-`, `*`, `/`, `^`, `sqrt`, `sin`, `cos`, `tan`, `log`
-- Example: `"Calculate (100 + 50) * 3"`
-
-**DateTime** - Date and time operations  
-- Current date/time
-- Add days to current date
-- Format dates
-- Example: `"What day will it be 10 days from now?"`
-
-**FileReader** - Read local files
-- Read entire file or specific lines
-- Supports relative and absolute paths
-- Example: `"Read the first 50 lines of README.md"`
 
 #### Output Formats
 
@@ -288,11 +272,11 @@ swiftopenai agent "What language did I mention?" --session-id work-session
 #### Real-World Examples
 
 ```bash
-# Complex multi-tool task
-swiftopenai agent "Calculate the compound interest on $1000 at 5% for 3 years, and tell me what date that will be from today"
+# Complex task with MCP tools
+swiftopenai agent "List all my GitHub repositories and create an issue about updating documentation" --mcp-servers github
 
-# Code analysis with file reading
-swiftopenai agent "Read the Package.swift file and explain what dependencies this project uses" --tools file_reader
+# Code analysis with filesystem MCP
+swiftopenai agent "Read the Package.swift file and explain what dependencies this project uses" --mcp-servers filesystem
 
 # Interactive problem-solving session
 swiftopenai agent --interactive --model gpt-5 --show-tool-events
@@ -300,10 +284,317 @@ swiftopenai agent --interactive --model gpt-5 --show-tool-events
 # You: Calculate how many work days are in the next 30 days
 # You: What's the date 30 days from now?
 
-# Production monitoring with JSON output
-swiftopenai agent "Check the current time and calculate server uptime percentage if it's been running for 720 hours out of 744 hours this month" \
+# Production monitoring with MCP and JSON output
+swiftopenai agent "Query the database for system metrics and calculate uptime percentage" \
   --output-format json \
-  --tools calculator,datetime
+  --mcp-servers postgres
+```
+
+### MCP (Model Context Protocol) Integration 🔌
+
+SwiftOpenAI-CLI supports the Model Context Protocol (MCP), allowing you to connect to external services and tools through MCP servers. This feature is fully compatible with the Claude Code SDK specification, enabling seamless integration with a growing ecosystem of MCP-compatible tools.
+
+#### What is MCP?
+
+MCP is an open protocol developed by Anthropic that enables AI assistants to securely connect to external data sources and tools. Instead of building custom integrations for each service, MCP provides a standardized way to:
+
+- **Access external APIs** - GitHub, Slack, Google Drive, databases, and more
+- **Perform system operations** - File system access, shell commands, git operations
+- **Query data sources** - PostgreSQL, SQLite, REST APIs, GraphQL endpoints
+- **Extend capabilities** - Add any custom tool without modifying the CLI
+
+#### Quick Start
+
+```bash
+# 1. Add the GitHub MCP server to your configuration
+swiftopenai config mcp add github npx --args "@modelcontextprotocol/server-github" --env "GITHUB_PERSONAL_ACCESS_TOKEN=your-token" --enable
+
+# 2. Use it with the agent command
+swiftopenai agent "List my recent pull requests" --mcp-servers github
+
+# 3. Interactive mode for continuous conversations
+swiftopenai agent --interactive --mcp-servers github
+# 🚀 MCP servers initialized once for this session (optimized!)
+# You: Create an issue about the bug we discussed
+# You: Show me all open issues
+# You: Close issue #123
+```
+
+#### Available MCP Servers
+
+Popular MCP servers you can use immediately:
+
+- **GitHub** (`@modelcontextprotocol/server-github`) - Manage repos, issues, PRs, releases
+- **Filesystem** (`@modelcontextprotocol/server-filesystem`) - Read/write local files with permissions
+- **PostgreSQL** (`@modelcontextprotocol/server-postgres`) - Query and manage PostgreSQL databases
+- **Slack** (`@modelcontextprotocol/server-slack`) - Send messages, read channels, manage workspace
+- **Google Drive** (`@modelcontextprotocol/server-gdrive`) - Access and manage Drive files
+- **Git** (`@modelcontextprotocol/server-git`) - Version control operations
+- **Puppeteer** (`@modelcontextprotocol/server-puppeteer`) - Web scraping and browser automation
+- **Airbnb** (`@openbnb/mcp-server-airbnb`) - Search listings, get details, read reviews
+
+Find more at [MCP Servers Repository](https://github.com/modelcontextprotocol/servers)
+
+#### Configuration
+
+##### Method 1: CLI Commands (Recommended)
+
+```bash
+# Add a new MCP server
+swiftopenai config mcp add <name> <command> --args <arguments> --env <KEY=VALUE> --enable
+
+# Examples
+swiftopenai config mcp add github npx \
+  --args "@modelcontextprotocol/server-github" \
+  --env "GITHUB_PERSONAL_ACCESS_TOKEN=ghp_..." \
+  --enable
+
+swiftopenai config mcp add postgres npx \
+  --args "@modelcontextprotocol/server-postgres" \
+  --env "DATABASE_URL=postgresql://user:pass@localhost/db" \
+  --enable
+
+# Manage servers
+swiftopenai config mcp list                    # List all configured servers
+swiftopenai config mcp enable github           # Enable a server
+swiftopenai config mcp disable github          # Disable a server  
+swiftopenai config mcp remove github           # Remove a server
+```
+
+##### Method 2: Direct Configuration File
+
+Edit `~/.swiftopenai/config.json`:
+
+**Object Format (Claude Code SDK compatible):**
+```json
+{
+  "apiKey": "sk-...",
+  "defaultModel": "gpt-4o",
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_..."
+      },
+      "enabled": true
+    },
+    "postgres": {
+      "command": "npx",
+      "args": ["@modelcontextprotocol/server-postgres"],
+      "env": {
+        "DATABASE_URL": "postgresql://localhost/mydb"
+      },
+      "enabled": true
+    }
+  }
+}
+```
+
+**Array Format (Legacy, still supported):**
+```json
+{
+  "mcpServers": [
+    {
+      "name": "github",
+      "command": "npx",
+      "args": ["@modelcontextprotocol/server-github"],
+      "environment": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_..."
+      },
+      "enabled": true
+    }
+  ]
+}
+```
+
+#### Usage Examples
+
+##### GitHub Workflow
+```bash
+# Repository management
+swiftopenai agent "Create a new repo called my-project with a README" --mcp-servers github
+swiftopenai agent "List all issues in repo jamesrochabrun/SwiftOpenAI" --mcp-servers github
+swiftopenai agent "Create a pull request from feature branch to main" --mcp-servers github
+
+# Interactive development session
+swiftopenai agent --interactive --mcp-servers github
+# You: Show me all my starred repositories
+# You: Create an issue in the first one about updating dependencies
+# You: Add a comment to issue #42 with the solution we discussed
+```
+
+##### Database Operations
+```bash
+# Add PostgreSQL server
+swiftopenai config mcp add postgres npx \
+  --args "@modelcontextprotocol/server-postgres" \
+  --env "DATABASE_URL=postgresql://user:pass@localhost/myapp" \
+  --enable
+
+# Query database
+swiftopenai agent "Show me all users created in the last week" --mcp-servers postgres
+swiftopenai agent "What's the total revenue this month?" --mcp-servers postgres
+
+# Interactive data analysis
+swiftopenai agent --interactive --mcp-servers postgres
+# You: List all tables in the database
+# You: Show me the schema for the orders table
+# You: Calculate the average order value for each month
+```
+
+##### File System Operations
+```bash
+# Add filesystem server with specific permissions
+swiftopenai config mcp add fs npx \
+  --args "@modelcontextprotocol/server-filesystem,/Users/me/projects" \
+  --enable
+
+# File operations
+swiftopenai agent "List all Python files in the current directory" --mcp-servers fs
+swiftopenai agent "Read the package.json and summarize dependencies" --mcp-servers fs
+swiftopenai agent "Create a new file called notes.md with our discussion" --mcp-servers fs
+```
+
+##### Multi-Server Usage
+```bash
+# Use multiple MCP servers together
+swiftopenai agent "Read the README.md file and create a GitHub issue about missing docs" \
+  --mcp-servers fs,github
+
+# Interactive with multiple servers
+swiftopenai agent --interactive --mcp-servers github,postgres,fs
+# You: Read the database schema from schema.sql
+# You: Check if there are any GitHub issues about database migrations
+# You: Create a migration script based on the schema changes
+```
+
+#### Advanced Features
+
+##### Tool Naming Convention
+MCP tools follow the naming pattern: `mcp__serverName__toolName`
+
+```bash
+# Tools are automatically namespaced
+mcp__github__create_issue
+mcp__github__list_repos
+mcp__postgres__query
+mcp__fs__read_file
+```
+
+##### Pattern Matching with --allowed-tools
+Control which tools the agent can use with glob patterns:
+
+```bash
+# Allow only GitHub tools
+swiftopenai agent "Help me manage my repos" --allowed-tools "mcp__github__*"
+
+# Allow specific tools from multiple servers
+swiftopenai agent "Analyze data" --allowed-tools "mcp__postgres__query,mcp__fs__read*"
+
+# Allow all MCP tools but no built-in tools
+swiftopenai agent "Do something" --allowed-tools "mcp__*"
+
+# Mix different MCP server tools
+swiftopenai agent "Query and store data" --allowed-tools "mcp__postgres__*,mcp__fs__*"
+```
+
+##### Auto-Installation
+NPX packages are automatically installed with the `-y` flag - no manual installation needed:
+
+```bash
+# Just add and use - auto-installs on first run
+swiftopenai config mcp add newserver npx --args "@org/mcp-server" --enable
+swiftopenai agent "Use the new server" --mcp-servers newserver
+# Automatically runs: npx -y @org/mcp-server
+```
+
+##### Performance Optimization
+In interactive mode, MCP servers are initialized once and reused for the entire session:
+
+```bash
+swiftopenai agent --interactive --mcp-servers github,postgres
+# 🚀 MCP servers initialized once for this session
+# Fast responses - no reconnection between messages!
+```
+
+Non-interactive mode creates fresh connections for each command (stateless execution).
+
+#### Real-World Scenarios
+
+##### Development Workflow
+```bash
+# Morning standup prep
+swiftopenai agent --interactive --mcp-servers github,postgres
+# You: Show me all PRs assigned to me
+# You: Check if the database has the migrations from PR #123
+# You: List all issues labeled 'bug' created yesterday
+# You: Generate a summary for the standup
+```
+
+##### Content Management
+```bash
+# Blog post workflow
+swiftopenai agent --interactive --mcp-servers fs,github
+# You: Read all markdown files in the blog directory
+# You: Create a new post about MCP integration
+# You: Generate a table of contents
+# You: Create a PR with the new post
+```
+
+##### Data Analysis
+```bash
+# Sales analysis
+swiftopenai agent --interactive --mcp-servers postgres
+# You: Show me total sales by region this quarter
+# You: Calculate the month-over-month growth rate
+# You: Which products have the highest margin?
+# You: Export the top 10 products to a report
+```
+
+#### Troubleshooting
+
+**NPX not found:**
+```bash
+# Find npx location
+which npx
+# Usually: /usr/local/bin/npx or ~/.nvm/versions/node/vX.X.X/bin/npx
+
+# The CLI automatically resolves npx through PATH
+# If issues persist, use the full path in configuration
+```
+
+**Authentication errors:**
+```bash
+# Check environment variables are set correctly
+swiftopenai config mcp list
+# Verify the env vars show correctly
+
+# Test with a simple command
+swiftopenai agent "Test connection" --mcp-servers github --show-mcp-status
+```
+
+**Tool not found:**
+```bash
+# List all available tools
+swiftopenai agent "What tools are available?" --mcp-servers github --show-mcp-status
+
+# Tools are named: mcp__serverName__toolName
+# Use --allowed-tools with correct pattern
+swiftopenai agent "Do something" --allowed-tools "mcp__github__*"
+```
+
+**Server not connecting:**
+```bash
+# Enable verbose output
+swiftopenai agent "Test" --mcp-servers myserver --show-mcp-status
+
+# Check server is enabled
+swiftopenai config mcp list
+
+# Try re-adding with correct arguments
+swiftopenai config mcp remove myserver
+swiftopenai config mcp add myserver npx --args "@correct/package" --enable
 ```
 
 ### Image Generation
