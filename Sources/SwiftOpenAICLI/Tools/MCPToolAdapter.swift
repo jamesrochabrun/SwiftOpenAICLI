@@ -58,7 +58,8 @@ class MCPToolAdapter: CLITool {
             }
             
             let json = try JSONSerialization.jsonObject(with: data)
-            mcpArgs = try convertToMCPValues(json)
+            // Pass the tool's input schema to help with type conversion
+            mcpArgs = try convertToMCPValues(json, schema: mcpTool.inputSchema)
         }
         
         let result = try await mcpClient.executeTool(
@@ -90,28 +91,105 @@ class MCPToolAdapter: CLITool {
         return result.isError == true ? "Error: Tool execution failed" : "Success"
     }
     
-    private func convertToMCPValues(_ json: Any) throws -> [String: Value] {
+    private func convertToMCPValues(_ json: Any, schema: Value) throws -> [String: Value] {
         guard let dict = json as? [String: Any] else {
             throw MCPError.invalidArguments
         }
         
+        // Extract property schemas if available
+        var propertySchemas: [String: Value] = [:]
+        if case .object(let schemaDict) = schema,
+           let properties = schemaDict["properties"],
+           case .object(let props) = properties {
+            propertySchemas = props
+        }
+        
         var result: [String: Value] = [:]
         for (key, value) in dict {
-            result[key] = convertToValue(value)
+            // Check if we have schema information for this property
+            if let propSchema = propertySchemas[key],
+               case .object(let schemaDict) = propSchema,
+               let typeValue = schemaDict["type"],
+               case .string(let typeStr) = typeValue {
+                // Convert based on expected type from schema
+                result[key] = convertToValueWithType(value, expectedType: typeStr)
+            } else {
+                // Fall back to automatic type detection
+                result[key] = convertToValue(value)
+            }
         }
         return result
+    }
+    
+    private func convertToValueWithType(_ value: Any, expectedType: String) -> Value {
+        switch expectedType {
+        case "boolean":
+            // Handle OpenAI sending booleans as numbers
+            if let num = value as? Int {
+                return .bool(num != 0)
+            } else if let num = value as? Double {
+                return .bool(num != 0)
+            } else if let bool = value as? Bool {
+                return .bool(bool)
+            }
+            // Try to parse string as boolean
+            if let str = value as? String {
+                return .bool(str.lowercased() == "true" || str == "1")
+            }
+            return .bool(false)
+        case "string":
+            return .string(String(describing: value))
+        case "integer":
+            if let num = value as? Int {
+                return .int(num)
+            } else if let num = value as? Double {
+                return .int(Int(num))
+            }
+            return .int(0)
+        case "number":
+            if let num = value as? Double {
+                return .double(num)
+            } else if let num = value as? Int {
+                return .double(Double(num))
+            }
+            return .double(0)
+        case "array":
+            if let arr = value as? [Any] {
+                return .array(arr.map(convertToValue))
+            }
+            return .array([])
+        case "object":
+            if let dict = value as? [String: Any] {
+                var obj: [String: Value] = [:]
+                for (k, v) in dict {
+                    obj[k] = convertToValue(v)
+                }
+                return .object(obj)
+            }
+            return .object([:])
+        default:
+            return convertToValue(value)
+        }
     }
     
     private func convertToValue(_ value: Any) -> Value {
         switch value {
         case let str as String:
             return .string(str)
+        case let bool as Bool:
+            // Check for Bool first, before checking for Int
+            return .bool(bool)
         case let num as Int:
+            // OpenAI sometimes sends booleans as 0/1
+            // Check if this might be a boolean based on the value
+            if num == 0 || num == 1 {
+                // This could be a boolean, but we'll keep it as int
+                // unless we have more context
+                return .int(num)
+            }
             return .int(num)
         case let num as Double:
             return .double(num)
-        case let bool as Bool:
-            return .bool(bool)
         case let arr as [Any]:
             return .array(arr.map(convertToValue))
         case let dict as [String: Any]:
