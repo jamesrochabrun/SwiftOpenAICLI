@@ -447,7 +447,8 @@ final class OpenAIService {
               fflush(stdout)
             }
           } else if outputFormat == "interactive-stream" {
-            print("← ".lightBlack + "Result: ".lightBlack + result.green)
+            let truncatedResult = toolExecutor.truncateForDisplay(result)
+            print("← ".lightBlack + "Result: ".lightBlack + truncatedResult.green)
             fflush(stdout)
           }
           

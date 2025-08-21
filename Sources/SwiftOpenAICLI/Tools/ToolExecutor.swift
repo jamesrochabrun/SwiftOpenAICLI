@@ -114,7 +114,7 @@ class ToolExecutor {
     return result
   }
   
-  private func truncateForDisplay(_ text: String) -> String {
+  func truncateForDisplay(_ text: String) -> String {
     // If verbose mode is enabled, show full text
     if showToolEventsVerbose {
       return text
