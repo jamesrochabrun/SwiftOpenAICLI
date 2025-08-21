@@ -51,8 +51,14 @@ struct AgentCommand: AsyncParsableCommand {
   @Flag(name: .long, help: "Show tool events in interactive mode")
   var showToolEvents = false
   
+  @Flag(name: .long, help: "Show full tool results without truncation")
+  var showToolEventsVerbose = false
+  
   @Flag(name: .long, help: "Show MCP connection status")
   var showMCPStatus = false
+  
+  @Option(name: .long, help: "Request timeout in seconds (default: model-specific)")
+  var timeout: Int?
   
   @Option(name: .long, help: "Verbosity level for GPT-5 models (low, medium, high)")
   var modelVerbosity: VerbosityLevel = .medium
@@ -73,6 +79,9 @@ struct AgentCommand: AsyncParsableCommand {
       enabledTools = parseTools(tools)
     }
     
+    // Determine timeout based on model if not explicitly set
+    let effectiveTimeout = timeout ?? getDefaultTimeout(for: model)
+    
     if interactive {
       try await runInteractiveMode(mcpConfigs: mcpConfigs, enabledTools: enabledTools)
     } else if let message = message {
@@ -88,7 +97,9 @@ struct AgentCommand: AsyncParsableCommand {
         reasoning: reasoning.rawValue,
         sessionId: sessionId,
         mcpServers: mcpConfigs,
-        showMCPStatus: showMCPStatus
+        showMCPStatus: showMCPStatus,
+        timeout: effectiveTimeout,
+        showToolEventsVerbose: showToolEventsVerbose
       )
     } else {
       print("Please provide a message or use --interactive flag".red)
@@ -133,6 +144,17 @@ struct AgentCommand: AsyncParsableCommand {
     return configs
   }
   
+  private func getDefaultTimeout(for model: String) -> Int {
+    let lowercased = model.lowercased()
+    if lowercased.contains("gpt-5") || lowercased.contains("gpt5") {
+      return 180 // 3 minutes for GPT-5
+    } else if lowercased.contains("gpt-4o-mini") || lowercased.contains("gpt4o-mini") {
+      return 30 // 30 seconds for GPT-4o-mini
+    } else {
+      return 60 // 1 minute default for other models
+    }
+  }
+  
   private func runInteractiveMode(mcpConfigs: [MCPServerConfig] = [], enabledTools: Set<String>? = nil) async throws {
     // Check if we're in a proper terminal
 #if os(macOS) || os(Linux)
@@ -151,8 +173,16 @@ struct AgentCommand: AsyncParsableCommand {
     
     // Create persistent ToolExecutor for the session
     // In interactive mode, always show MCP status and never use stderr
-    let toolExecutor = ToolExecutor(mcpServers: mcpConfigs, verbose: true, useStderr: false)
+    let toolExecutor = ToolExecutor(
+      mcpServers: mcpConfigs, 
+      verbose: true, 
+      useStderr: false,
+      showToolEventsVerbose: showToolEventsVerbose
+    )
     await toolExecutor.initialize()
+    
+    // Default to showing tool events in interactive mode
+    // Tool events are always shown in interactive mode
     
     print("🤖 OpenAI Agent Mode (\(model))".cyan)
     if let allowedTools = allowedTools {
@@ -162,9 +192,7 @@ struct AgentCommand: AsyncParsableCommand {
       print("MCP servers: \(mcpConfigs.map { $0.name }.joined(separator: ", "))".lightBlack)
       print("🚀 MCP servers initialized once for this session".green)
     }
-    if showToolEvents {
-      print("Tool events: ON".lightBlack)
-    }
+    print("Tool events: \(showToolEventsVerbose ? "VERBOSE" : "COMPACT")".lightBlack)
     let contextWindow = TokenCalculator.getContextWindow(for: model)
     print("Context window: \(contextWindow / 1000)K tokens".lightBlack)
     if contextWindow <= 5000 {
@@ -226,7 +254,9 @@ struct AgentCommand: AsyncParsableCommand {
       }
       
       do {
-        let format = showToolEvents ? "interactive-stream" : "plain"
+        // Always show tool events in interactive mode
+        let format = "interactive-stream"
+        // Note: We could pass timeout here if agentChatWithExecutor supported it
         try await OpenAIService.shared.agentChatWithExecutor(
           message: trimmedInput,
           model: model,

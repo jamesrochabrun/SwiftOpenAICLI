@@ -114,7 +114,26 @@ final class OpenAIService {
         fflush(stdout)
       }
       
-      let result = try await openAI.startChat(parameters: parameters)
+      // Add timeout handling with Task
+      let result = try await withThrowingTaskGroup(of: ChatCompletionObject.self) { group in
+        group.addTask {
+          return try await openAI.startChat(parameters: parameters)
+        }
+        
+        group.addTask {
+          // Timeout task - increase timeout for GPT-5 models
+          let timeoutSeconds = normalizedModel.lowercased().contains("gpt-5") ? 180 : 60
+          try await Task.sleep(nanoseconds: UInt64(timeoutSeconds * 1_000_000_000))
+          throw OpenAIServiceError.timeout(seconds: timeoutSeconds)
+        }
+        
+        // Return the first completed task (either result or timeout)
+        if let result = try await group.next() {
+          group.cancelAll()
+          return result
+        }
+        throw OpenAIServiceError.timeout(seconds: 60)
+      }
       
       // Clear the loading indicator
       if !plain {
@@ -171,11 +190,11 @@ final class OpenAIService {
     return response.data.first?.embedding ?? []
   }
   
-  func agentChat(message: String, model: String, system: String? = nil, temperature: Double = 1.0, maxTokens: Int? = nil, outputFormat: String = "plain", enabledTools: Set<String>?, verbose: String = "medium", reasoning: String = "medium", sessionId: String? = nil, mcpServers: [MCPServerConfig] = [], showMCPStatus: Bool = false) async throws {
+  func agentChat(message: String, model: String, system: String? = nil, temperature: Double = 1.0, maxTokens: Int? = nil, outputFormat: String = "plain", enabledTools: Set<String>?, verbose: String = "medium", reasoning: String = "medium", sessionId: String? = nil, mcpServers: [MCPServerConfig] = [], showMCPStatus: Bool = false, timeout: Int = 60, showToolEventsVerbose: Bool = false) async throws {
     let useStderr = (outputFormat == "json" || outputFormat == "stream-json")
     // Show MCP status if explicitly requested OR if using plain output format
     let showMCP = showMCPStatus || outputFormat == "plain"
-    let toolExecutor = ToolExecutor(mcpServers: mcpServers, verbose: showMCP, useStderr: useStderr)
+    let toolExecutor = ToolExecutor(mcpServers: mcpServers, verbose: showMCP, useStderr: useStderr, showToolEventsVerbose: showToolEventsVerbose)
     
     // Initialize MCP servers if any
     await toolExecutor.initialize()
@@ -307,7 +326,26 @@ final class OpenAIService {
       parameters.messages = conversationMessages
       numTurns += 1
       
-      let result = try await openAI.startChat(parameters: parameters)
+      // Add timeout handling with Task
+      let result = try await withThrowingTaskGroup(of: ChatCompletionObject.self) { group in
+        group.addTask {
+          return try await openAI.startChat(parameters: parameters)
+        }
+        
+        group.addTask {
+          // Timeout task - increase timeout for GPT-5 models
+          let timeoutSeconds = normalizedModel.lowercased().contains("gpt-5") ? 180 : 60
+          try await Task.sleep(nanoseconds: UInt64(timeoutSeconds * 1_000_000_000))
+          throw OpenAIServiceError.timeout(seconds: timeoutSeconds)
+        }
+        
+        // Return the first completed task (either result or timeout)
+        if let result = try await group.next() {
+          group.cancelAll()
+          return result
+        }
+        throw OpenAIServiceError.timeout(seconds: 60)
+      }
       
       if outputFormat == "plain" || outputFormat == "interactive-stream" {
         print("\r", terminator: "")
@@ -467,11 +505,14 @@ final class OpenAIService {
 
 enum OpenAIServiceError: LocalizedError {
   case noAPIKey
+  case timeout(seconds: Int)
   
   var errorDescription: String? {
     switch self {
     case .noAPIKey:
       return "No OpenAI API key configured"
+    case .timeout(let seconds):
+      return "Request timed out after \(seconds) seconds"
     }
   }
 }

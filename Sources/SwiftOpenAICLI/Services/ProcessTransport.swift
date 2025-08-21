@@ -100,8 +100,17 @@ actor ProcessTransport: Transport {
             // Monitor stderr for debugging
             errorPipe.fileHandleForReading.readabilityHandler = { handle in
                 let data = handle.availableData
-                if !data.isEmpty, let error = String(data: data, encoding: .utf8) {
-                    print("[MCP Server Error] \(error)")
+                if !data.isEmpty, let message = String(data: data, encoding: .utf8) {
+                    // Parse log level from the message if present
+                    let label: String
+                    if message.contains("[ERROR]") || message.contains("[FATAL]") {
+                        label = "[MCP Server Error]"
+                    } else if message.contains("[WARN]") {
+                        label = "[MCP Server Warning]"
+                    } else {
+                        label = "[MCP Server Log]"
+                    }
+                    print("\(label) \(message)")
                 }
             }
         }

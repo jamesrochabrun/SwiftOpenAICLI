@@ -8,11 +8,13 @@ class ToolExecutor {
   private var mcpServers: [MCPServerConfig] = []
   private let verbose: Bool
   private let useStderr: Bool
+  private let showToolEventsVerbose: Bool
   
-  init(mcpServers: [MCPServerConfig] = [], verbose: Bool = false, useStderr: Bool = false) {
+  init(mcpServers: [MCPServerConfig] = [], verbose: Bool = false, useStderr: Bool = false, showToolEventsVerbose: Bool = false) {
     self.mcpServers = mcpServers
     self.verbose = verbose
     self.useStderr = useStderr
+    self.showToolEventsVerbose = showToolEventsVerbose
   }
   
   func initialize() async {
@@ -100,16 +102,61 @@ class ToolExecutor {
     // Only show detailed tool execution in plain format (silent mode shows nothing)
     if outputFormat == "plain" {
       print("\n🔧 Executing tool: \(name)".lightBlack)
-      print("   Arguments: \(arguments)".lightBlack)
+      print("   Arguments: \(truncateForDisplay(arguments))".lightBlack)
     }
     
     let result = try await tool.execute(arguments: arguments)
     
     if outputFormat == "plain" {
-      print("   Result: \(result)".lightBlack)
+      print("   Result: \(truncateForDisplay(result))".lightBlack)
     }
     
     return result
+  }
+  
+  private func truncateForDisplay(_ text: String) -> String {
+    // If verbose mode is enabled, show full text
+    if showToolEventsVerbose {
+      return text
+    }
+    
+    // Smart truncation for compact mode
+    let maxLength = 500
+    
+    // Try to parse as JSON for smarter truncation
+    if let data = text.data(using: .utf8),
+       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+      
+      // Special handling for search results
+      if let searchResults = json["searchResults"] as? [[String: Any]] {
+        let count = searchResults.count
+        let preview = searchResults.prefix(3).compactMap { item -> String? in
+          if let name = (item["demandStayListing"] as? [String: Any])?["description"] as? [String: Any],
+             let title = (name["name"] as? [String: Any])?["localizedStringWithTranslationPreference"] as? String {
+            return "• \(title)"
+          }
+          return nil
+        }.joined(separator: "\n  ")
+        
+        if count > 3 {
+          return "Found \(count) results (showing 3):\n  \(preview)\n  ... [\(count - 3) more results]"
+        } else {
+          return "Found \(count) results:\n  \(preview)"
+        }
+      }
+      
+      // For other JSON, show a summary
+      if text.count > maxLength {
+        return String(text.prefix(maxLength)) + "... [\(text.count - maxLength) more chars]"
+      }
+    }
+    
+    // For plain text, simple truncation
+    if text.count > maxLength {
+      return String(text.prefix(maxLength)) + "... [\(text.count - maxLength) more chars]"
+    }
+    
+    return text
   }
   
   func printAvailableTools() {
