@@ -6,17 +6,29 @@ class ToolExecutor {
   private var availableTools: [String: CLITool] = [:]
   private var mcpClient: MCPClient?
   private var mcpServers: [MCPServerConfig] = []
+  private let verbose: Bool
+  private let useStderr: Bool
   
-  init(mcpServers: [MCPServerConfig] = [], verbose: Bool = false) {
+  init(mcpServers: [MCPServerConfig] = [], verbose: Bool = false, useStderr: Bool = false) {
     self.mcpServers = mcpServers
+    self.verbose = verbose
+    self.useStderr = useStderr
   }
   
   func initialize() async {
     if !mcpServers.isEmpty {
-      await initializeMCPServers(verbose: mcpServers.isEmpty ? false : true)
+      await initializeMCPServers(verbose: self.verbose)
     }
   }
   
+  
+  private func printStatus(_ message: String) {
+    if useStderr {
+      FileHandle.standardError.write(Data("\(message)\n".utf8))
+    } else {
+      print(message)
+    }
+  }
   
   func getAllAvailableToolNames() -> Set<String> {
     return Set(availableTools.keys)
@@ -114,7 +126,7 @@ class ToolExecutor {
   }
   
   private func initializeMCPServers(verbose: Bool) async {
-    mcpClient = MCPClient(verbose: verbose)
+    mcpClient = MCPClient(verbose: verbose, useStderr: useStderr)
     
     for server in mcpServers {
       do {
@@ -122,7 +134,7 @@ class ToolExecutor {
         await registerMCPTools(from: server.name)
       } catch {
         if verbose {
-          print("⚠️  Failed to connect to MCP server '\(server.name)': \(error.localizedDescription)".yellow)
+          printStatus("⚠️  Failed to connect to MCP server '\(server.name)': \(error.localizedDescription)".yellow)
         }
       }
     }
@@ -143,17 +155,21 @@ class ToolExecutor {
           )
           // Use the sanitized name from the adapter (mcp__serverName__toolName)
           availableTools[adapter.name] = adapter
-          print("   Registered tool: \(adapter.name)".lightBlack)
+          if verbose {
+            printStatus("   Registered tool: \(adapter.name)".lightBlack)
+          }
         }
       }
     } catch {
-      print("⚠️  Failed to register tools from '\(serverName)': \(error.localizedDescription)".yellow)
+      if verbose {
+        printStatus("⚠️  Failed to register tools from '\(serverName)': \(error.localizedDescription)".yellow)
+      }
     }
   }
   
   func connectMCPServer(_ config: MCPServerConfig, verbose: Bool = false) async throws {
     if mcpClient == nil {
-      mcpClient = MCPClient(verbose: verbose)
+      mcpClient = MCPClient(verbose: verbose, useStderr: useStderr)
     }
     
     try await mcpClient?.connectToServer(config)

@@ -171,8 +171,11 @@ final class OpenAIService {
     return response.data.first?.embedding ?? []
   }
   
-  func agentChat(message: String, model: String, system: String? = nil, temperature: Double = 1.0, maxTokens: Int? = nil, outputFormat: String = "plain", enabledTools: Set<String>?, verbose: String = "medium", reasoning: String = "medium", sessionId: String? = nil, mcpServers: [MCPServerConfig] = []) async throws {
-    let toolExecutor = ToolExecutor(mcpServers: mcpServers, verbose: outputFormat == "plain")
+  func agentChat(message: String, model: String, system: String? = nil, temperature: Double = 1.0, maxTokens: Int? = nil, outputFormat: String = "plain", enabledTools: Set<String>?, verbose: String = "medium", reasoning: String = "medium", sessionId: String? = nil, mcpServers: [MCPServerConfig] = [], showMCPStatus: Bool = false) async throws {
+    let useStderr = (outputFormat == "json" || outputFormat == "stream-json")
+    // Show MCP status if explicitly requested OR if using plain output format
+    let showMCP = showMCPStatus || outputFormat == "plain"
+    let toolExecutor = ToolExecutor(mcpServers: mcpServers, verbose: showMCP, useStderr: useStderr)
     
     // Initialize MCP servers if any
     await toolExecutor.initialize()

@@ -12,14 +12,24 @@ struct MCPServerConfig {
 actor MCPClient {
     private var activeClients: [String: Client] = [:]
     private let verbose: Bool
+    private let useStderr: Bool
     
-    init(verbose: Bool = false) {
+    init(verbose: Bool = false, useStderr: Bool = false) {
         self.verbose = verbose
+        self.useStderr = useStderr
+    }
+    
+    private func printStatus(_ message: String) {
+        if useStderr {
+            FileHandle.standardError.write(Data("\(message)\n".utf8))
+        } else {
+            print(message)
+        }
     }
     
     func connectToServer(_ config: MCPServerConfig) async throws {
         if verbose {
-            print("🔗 Connecting to MCP server: \(config.name)".lightBlack)
+            printStatus("🔗 Connecting to MCP server: \(config.name)".lightBlack)
         }
         
         let client = Client(
@@ -29,26 +39,27 @@ actor MCPClient {
         )
         
         // Create process transport to launch the server
+        // When using stderr for our output, disable ProcessTransport verbose to avoid stdout pollution
         let transport = ProcessTransport(
             command: config.command,
             args: config.args,
             environment: config.environment,
-            verbose: verbose
+            verbose: verbose && !useStderr
         )
         
         let initResult = try await client.connect(transport: transport)
         
         if verbose {
-            print("✅ Connected to: \(initResult.serverInfo.name) v\(initResult.serverInfo.version)".green)
+            printStatus("✅ Connected to: \(initResult.serverInfo.name) v\(initResult.serverInfo.version)".green)
             let capabilities = initResult.capabilities
             if capabilities.tools != nil {
-                print("   Tools: supported".lightBlack)
+                printStatus("   Tools: supported".lightBlack)
             }
             if capabilities.resources != nil {
-                print("   Resources: supported".lightBlack)
+                printStatus("   Resources: supported".lightBlack)
             }
             if capabilities.prompts != nil {
-                print("   Prompts: supported".lightBlack)
+                printStatus("   Prompts: supported".lightBlack)
             }
         }
         
@@ -59,7 +70,7 @@ actor MCPClient {
         activeClients.removeValue(forKey: name)
         
         if verbose {
-            print("🔌 Disconnected from MCP server: \(name)".lightBlack)
+            printStatus("🔌 Disconnected from MCP server: \(name)".lightBlack)
         }
     }
     

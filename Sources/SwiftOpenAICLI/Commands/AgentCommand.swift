@@ -87,7 +87,8 @@ struct AgentCommand: AsyncParsableCommand {
         verbose: modelVerbosity.rawValue,
         reasoning: reasoning.rawValue,
         sessionId: sessionId,
-        mcpServers: mcpConfigs
+        mcpServers: mcpConfigs,
+        showMCPStatus: showMCPStatus
       )
     } else {
       print("Please provide a message or use --interactive flag".red)
@@ -149,7 +150,8 @@ struct AgentCommand: AsyncParsableCommand {
     }
     
     // Create persistent ToolExecutor for the session
-    let toolExecutor = ToolExecutor(mcpServers: mcpConfigs, verbose: true)
+    // In interactive mode, always show MCP status and never use stderr
+    let toolExecutor = ToolExecutor(mcpServers: mcpConfigs, verbose: true, useStderr: false)
     await toolExecutor.initialize()
     
     print("🤖 OpenAI Agent Mode (\(model))".cyan)
