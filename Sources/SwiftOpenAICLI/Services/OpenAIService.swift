@@ -190,7 +190,7 @@ final class OpenAIService {
     return response.data.first?.embedding ?? []
   }
   
-  func agentChat(message: String, model: String, system: String? = nil, temperature: Double = 1.0, maxTokens: Int? = nil, outputFormat: String = "plain", enabledTools: Set<String>?, verbose: String = "medium", reasoning: String = "medium", sessionId: String? = nil, mcpServers: [MCPServerConfig] = [], showMCPStatus: Bool = false, timeout: Int = 60, showToolEventsVerbose: Bool = false) async throws {
+  func agentChat(message: String, model: String, system: String? = nil, temperature: Double = 1.0, maxTokens: Int? = nil, outputFormat: String = "plain", enabledTools: Set<String>?, verbose: String = "medium", reasoning: String = "medium", sessionId: String? = nil, mcpServers: [MCPServerConfig] = [], showMCPStatus: Bool = false, timeout: Int = 60, showToolEventsVerbose: Bool = false, maxToolCalls: Int = 10) async throws {
     let useStderr = (outputFormat == "json" || outputFormat == "stream-json")
     // Show MCP status if explicitly requested OR if using plain output format
     let showMCP = showMCPStatus || outputFormat == "plain"
@@ -211,11 +211,12 @@ final class OpenAIService {
       enabledTools: enabledTools,
       verbose: verbose,
       reasoning: reasoning,
-      sessionId: sessionId
+      sessionId: sessionId,
+      maxToolCalls: maxToolCalls
     )
   }
   
-  func agentChatWithExecutor(message: String, model: String, toolExecutor: ToolExecutor, system: String? = nil, temperature: Double = 1.0, maxTokens: Int? = nil, outputFormat: String = "plain", enabledTools: Set<String>?, verbose: String = "medium", reasoning: String = "medium", sessionId: String? = nil) async throws {
+  func agentChatWithExecutor(message: String, model: String, toolExecutor: ToolExecutor, system: String? = nil, temperature: Double = 1.0, maxTokens: Int? = nil, outputFormat: String = "plain", enabledTools: Set<String>?, verbose: String = "medium", reasoning: String = "medium", sessionId: String? = nil, maxToolCalls: Int = 10) async throws {
     let openAI = try getService()
     
     let normalizedModel = normalizeModelName(model)
@@ -317,7 +318,7 @@ final class OpenAIService {
     
     var conversationMessages = messages
     var toolCallCount = 0
-    let maxToolCalls = 10
+    // maxToolCalls is now passed as a parameter
     var totalCost: Double = 0.0
     var numTurns = 0
     var finalResponse = ""

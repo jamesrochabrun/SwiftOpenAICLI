@@ -66,6 +66,9 @@ struct AgentCommand: AsyncParsableCommand {
   @Option(name: .long, help: "Reasoning effort for GPT-5 models (minimal, low, medium, high)")
   var reasoning: ReasoningEffort = .medium
   
+  @Option(name: .long, help: "Maximum number of tool calls allowed (default: 10)")
+  var maxToolCalls: Int = 10
+  
   mutating func run() async throws {
     let mcpConfigs = try loadMCPServers()
     
@@ -99,7 +102,8 @@ struct AgentCommand: AsyncParsableCommand {
         mcpServers: mcpConfigs,
         showMCPStatus: showMCPStatus,
         timeout: effectiveTimeout,
-        showToolEventsVerbose: showToolEventsVerbose
+        showToolEventsVerbose: showToolEventsVerbose,
+        maxToolCalls: maxToolCalls
       )
     } else {
       print("Please provide a message or use --interactive flag".red)
@@ -268,7 +272,8 @@ struct AgentCommand: AsyncParsableCommand {
           enabledTools: enabledTools,
           verbose: modelVerbosity.rawValue,
           reasoning: reasoning.rawValue,
-          sessionId: currentSessionId
+          sessionId: currentSessionId,
+          maxToolCalls: maxToolCalls
         )
         print()
       } catch {
