@@ -326,6 +326,17 @@ final class OpenAIService {
       parameters.messages = conversationMessages
       numTurns += 1
       
+      // Debug logging
+      if verbose == "high" || outputFormat == "plain" {
+        print("\n🔍 [DEBUG] Turn \(numTurns): Making API request with \(conversationMessages.count) messages".lightBlack)
+        print("   Last message role: \(conversationMessages.last?.role ?? "none")".lightBlack)
+        if let lastMessage = conversationMessages.last {
+          if lastMessage.role == "tool" {
+            print("   Tool response being sent: \(String(describing: lastMessage.content).prefix(100))...".lightBlack)
+          }
+        }
+      }
+      
       // Add timeout handling with Task
       let result = try await withThrowingTaskGroup(of: ChatCompletionObject.self) { group in
         group.addTask {
@@ -370,6 +381,14 @@ final class OpenAIService {
       }
       
       if let toolCalls = result.choices?.first?.message?.toolCalls, !toolCalls.isEmpty {
+        // Debug logging
+        if verbose == "high" || outputFormat == "plain" {
+          print("📞 [DEBUG] Received \(toolCalls.count) tool calls from LLM".lightBlack)
+          for (index, toolCall) in toolCalls.enumerated() {
+            print("   Tool \(index + 1): \(toolCall.function.name ?? "unknown")".lightBlack)
+          }
+        }
+        
         let assistantMessage = result.choices?.first?.message
         if let content = assistantMessage?.content {
           conversationMessages.append(.init(
@@ -437,13 +456,32 @@ final class OpenAIService {
             content: .text(result),
             toolCallID: toolId
           ))
+          
+          // Debug logging
+          if verbose == "high" || outputFormat == "plain" {
+            print("✅ [DEBUG] Added tool response to conversation (length: \(result.count) chars)".lightBlack)
+            print("   Tool call ID: \(toolId)".lightBlack)
+            print("   Response preview: \(result.prefix(100))...".lightBlack)
+          }
         }
         
         toolCallCount += toolCalls.count
+        
+        // Debug logging - show loop status
+        if verbose == "high" || outputFormat == "plain" {
+          print("🔄 [DEBUG] Loop status: toolCallCount=\(toolCallCount)/\(maxToolCalls), continuing...".lightBlack)
+        }
       } else {
         // Final response
         if let content = result.choices?.first?.message?.content {
           finalResponse = content
+          
+          // Debug logging
+          if verbose == "high" || outputFormat == "plain" {
+            print("🏁 [DEBUG] Received final response from LLM (no tool calls)".lightBlack)
+            print("   Response length: \(content.count) chars".lightBlack)
+          }
+          
           // Add assistant's response to conversation
           conversationMessages.append(.init(role: .assistant, content: .text(content)))
           
