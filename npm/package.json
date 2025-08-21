@@ -1,6 +1,6 @@
 {
   "name": "swiftopenai-cli",
-  "version": "1.3.4",
+  "version": "1.3.5",
   "description": "Command-line interface for OpenAI API, supporting multiple providers",
   "keywords": [
     "openai",
