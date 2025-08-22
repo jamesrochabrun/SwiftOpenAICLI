@@ -79,7 +79,15 @@ struct ReportCommand: AsyncParsableCommand {
     // Special handling for playwright - request screenshots
     var modifiedQuery = query
     if includeScreenshots && (mcpServers?.contains("playwright") ?? false) {
-      modifiedQuery += " [IMPORTANT: Take screenshots of important pages using browser_take_screenshot tool]"
+      modifiedQuery += """
+      
+      [CRITICAL SCREENSHOT INSTRUCTIONS: 
+      1. When you take a screenshot using browser_take_screenshot, you will receive a response like "Took the full page screenshot and saved it as /var/folders/.../screenshot.png"
+      2. You MUST include each screenshot in your markdown report using EXACTLY this format: ![Description](sandbox:/var/folders/.../screenshot.png)
+      3. Use the EXACT path from the tool response, just add 'sandbox:' prefix
+      4. Example: If tool says "saved it as /var/folders/abc/screenshot.png", write: ![Screenshot](sandbox:/var/folders/abc/screenshot.png)
+      5. Include ALL screenshots you take in the report - do not skip any]
+      """
     }
     
     // Generate the report content
@@ -183,8 +191,78 @@ struct ReportCommand: AsyncParsableCommand {
   }
   
   private func convertMarkdownToHTML(_ markdown: String) throws -> String {
-    // Basic markdown to HTML conversion
-    // In production, we'd use a proper markdown parser
+    // Process the markdown to convert images and formatting
+    var processedContent = markdown
+    
+    // Process images with sandbox paths FIRST (before other conversions)
+    let imagePattern = #"!\[([^\]]*)\]\((sandbox:)?([^\)]+)\)"#
+    let regex = try NSRegularExpression(pattern: imagePattern, options: [])
+    let matches = regex.matches(in: processedContent, options: [], range: NSRange(processedContent.startIndex..., in: processedContent))
+    
+    // Process matches in reverse order to maintain string indices
+    for match in matches.reversed() {
+      guard let matchRange = Range(match.range, in: processedContent) else { continue }
+      
+      let altTextRange = Range(match.range(at: 1), in: processedContent)
+      let pathRange = Range(match.range(at: 3), in: processedContent)
+      
+      let altText = altTextRange.map { String(processedContent[$0]) } ?? ""
+      let imagePath = pathRange.map { String(processedContent[$0]) } ?? ""
+      
+      // Try to load and embed the image
+      if let imageTag = embedImageAsBase64(path: imagePath, altText: altText) {
+        processedContent.replaceSubrange(matchRange, with: imageTag)
+      }
+    }
+    
+    // Convert markdown formatting
+    // Bold text
+    processedContent = processedContent.replacingOccurrences(of: #"\*\*([^*]+)\*\*"#, with: "<strong>$1</strong>", options: .regularExpression)
+    processedContent = processedContent.replacingOccurrences(of: #"__([^_]+)__"#, with: "<strong>$1</strong>", options: .regularExpression)
+    
+    // Italic text
+    processedContent = processedContent.replacingOccurrences(of: #"\*([^*]+)\*"#, with: "<em>$1</em>", options: .regularExpression)
+    processedContent = processedContent.replacingOccurrences(of: #"_([^_]+)_"#, with: "<em>$1</em>", options: .regularExpression)
+    
+    // Code blocks
+    processedContent = processedContent.replacingOccurrences(of: #"```([^`]+)```"#, with: "<pre><code>$1</code></pre>", options: .regularExpression)
+    processedContent = processedContent.replacingOccurrences(of: #"`([^`]+)`"#, with: "<code>$1</code>", options: .regularExpression)
+    
+    // Lists (using multiline patterns)
+    let lines = processedContent.components(separatedBy: "\n")
+    var convertedLines: [String] = []
+    
+    for line in lines {
+      var convertedLine = line
+      
+      // Convert lists
+      if line.starts(with: "- ") {
+        convertedLine = "<li>" + String(line.dropFirst(2)) + "</li>"
+      } else if line.starts(with: "* ") {
+        convertedLine = "<li>" + String(line.dropFirst(2)) + "</li>"
+      } else if line.range(of: #"^\d+\. (.+)$"#, options: .regularExpression) != nil {
+        let numberedItem = line.replacingOccurrences(of: #"^\d+\. "#, with: "", options: .regularExpression)
+        convertedLine = "<li>\(numberedItem)</li>"
+      }
+      // Convert headings
+      else if line.starts(with: "#### ") {
+        convertedLine = "<h4>" + String(line.dropFirst(5)) + "</h4>"
+      } else if line.starts(with: "### ") {
+        convertedLine = "<h3>" + String(line.dropFirst(4)) + "</h3>"
+      } else if line.starts(with: "## ") {
+        convertedLine = "<h2>" + String(line.dropFirst(3)) + "</h2>"
+      } else if line.starts(with: "# ") {
+        convertedLine = "<h1>" + String(line.dropFirst(2)) + "</h1>"
+      }
+      
+      convertedLines.append(convertedLine)
+    }
+    
+    processedContent = convertedLines.joined(separator: "\n")
+    
+    // Convert line breaks
+    processedContent = processedContent.replacingOccurrences(of: "\n", with: "<br>\n")
+    
     let html = """
     <!DOCTYPE html>
     <html>
@@ -195,9 +273,11 @@ struct ReportCommand: AsyncParsableCommand {
         body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
         h1 { color: #333; border-bottom: 2px solid #007AFF; padding-bottom: 10px; }
         h2 { color: #555; margin-top: 30px; }
+        h3 { color: #666; margin-top: 25px; }
+        h4 { color: #777; margin-top: 20px; }
         pre { background: #f5f5f5; padding: 10px; border-radius: 5px; overflow-x: auto; }
         code { background: #f0f0f0; padding: 2px 5px; border-radius: 3px; }
-        img { max-width: 100%; height: auto; display: block; margin: 20px 0; }
+        img { max-width: 100%; height: auto; display: block; margin: 20px 0; border: 1px solid #ddd; border-radius: 5px; }
         table { border-collapse: collapse; width: 100%; margin: 20px 0; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         th { background: #f5f5f5; }
@@ -205,13 +285,41 @@ struct ReportCommand: AsyncParsableCommand {
     </head>
     <body>
       <div id="content">
-        <!-- Markdown content would be converted here -->
-        \(markdown.replacingOccurrences(of: "\n", with: "<br>\n"))
+        \(processedContent)
       </div>
     </body>
     </html>
     """
     return html
+  }
+  
+  private func embedImageAsBase64(path: String, altText: String) -> String? {
+    // Clean the path (remove sandbox: prefix if present)
+    let cleanPath = path.replacingOccurrences(of: "sandbox:", with: "")
+    
+    // Try to read the image file
+    guard let imageData = try? Data(contentsOf: URL(fileURLWithPath: cleanPath)) else {
+      // If we can't read the file, return a placeholder
+      return "<p style='color: #999; font-style: italic;'>[\(altText.isEmpty ? "Image" : altText) - unable to load from: \(cleanPath)]</p>"
+    }
+    
+    // Determine MIME type based on file extension
+    let mimeType: String
+    if cleanPath.lowercased().hasSuffix(".png") {
+      mimeType = "image/png"
+    } else if cleanPath.lowercased().hasSuffix(".jpg") || cleanPath.lowercased().hasSuffix(".jpeg") {
+      mimeType = "image/jpeg"
+    } else if cleanPath.lowercased().hasSuffix(".gif") {
+      mimeType = "image/gif"
+    } else {
+      mimeType = "image/png" // Default to PNG
+    }
+    
+    // Convert to base64
+    let base64String = imageData.base64EncodedString()
+    
+    // Return embedded image tag
+    return "<img src=\"data:\(mimeType);base64,\(base64String)\" alt=\"\(altText)\" />"
   }
   
   #if os(macOS)
@@ -220,8 +328,8 @@ struct ReportCommand: AsyncParsableCommand {
     // Convert markdown to HTML first
     let html = try convertMarkdownToHTML(markdown)
     
-    // Create a WebView to render HTML
-    let webView = WKWebView(frame: NSRect(x: 0, y: 0, width: 612, height: 792)) // Letter size
+    // Create a WebView to render HTML with larger initial size for content measurement
+    let webView = WKWebView(frame: NSRect(x: 0, y: 0, width: 612, height: 5000)) // Letter width, tall height
     
     // Load HTML content
     webView.loadHTMLString(html, baseURL: nil)
@@ -229,9 +337,9 @@ struct ReportCommand: AsyncParsableCommand {
     // Wait for content to load
     try await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
     
-    // Create PDF data
+    // Create PDF data - let it auto-paginate
     let pdfConfiguration = WKPDFConfiguration()
-    pdfConfiguration.rect = CGRect(x: 0, y: 0, width: 612, height: 792)
+    // Don't set rect to allow automatic pagination of all content
     
     let pdfData = try await webView.pdf(configuration: pdfConfiguration)
     
