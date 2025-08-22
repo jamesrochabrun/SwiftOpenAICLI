@@ -1,6 +1,6 @@
 # SwiftOpenAI-CLI
 
-[![Version](https://img.shields.io/badge/version-1.4.3-blue.svg)](https://github.com/jamesrochabrun/SwiftOpenAICLI/releases)
+[![Version](https://img.shields.io/badge/version-1.4.4-blue.svg)](https://github.com/jamesrochabrun/SwiftOpenAICLI/releases)
 
 <img width="1090" height="680" alt="Image" src="https://github.com/user-attachments/assets/4c4dbbea-c557-43a2-8a5d-fdcad9987510" />
 
