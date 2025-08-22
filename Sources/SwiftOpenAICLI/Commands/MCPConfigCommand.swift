@@ -6,7 +6,7 @@ struct MCPConfigCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "mcp",
         abstract: "Manage MCP server configurations",
-        subcommands: [Add.self, Remove.self, List.self, Enable.self, Disable.self]
+        subcommands: [Add.self, AddHTTP.self, Remove.self, List.self, Enable.self, Disable.self]
     )
     
     struct Add: AsyncParsableCommand {
@@ -87,6 +87,94 @@ struct MCPConfigCommand: AsyncParsableCommand {
         }
     }
     
+    struct AddHTTP: AsyncParsableCommand {
+        static let configuration = CommandConfiguration(
+            commandName: "add-http",
+            abstract: "Add a new HTTP-based MCP server configuration (e.g., Zapier)"
+        )
+        
+        @Argument(help: "The name of the MCP server")
+        var name: String
+        
+        @Argument(help: "The HTTP endpoint URL for the MCP server")
+        var url: String
+        
+        @Option(name: .long, help: "Environment variables (KEY=VALUE,KEY2=VALUE2)")
+        var env: String?
+        
+        @Flag(name: .long, help: "Enable the server immediately")
+        var enable = false
+        
+        mutating func run() async throws {
+            let configManager = ConfigurationManager.shared
+            var config = configManager.getConfiguration()
+            
+            // Validate URL
+            guard URL(string: url) != nil else {
+                print("❌ Invalid URL: \(url)".red)
+                throw ExitCode.failure
+            }
+            
+            var environment: [String: String]? = nil
+            if let env = env {
+                environment = [:]
+                for pair in env.split(separator: ",") {
+                    let parts = pair.split(separator: "=", maxSplits: 1)
+                    if parts.count == 2 {
+                        environment?[String(parts[0])] = String(parts[1])
+                    }
+                }
+            }
+            
+            let serverDef = MCPServerDefinition(
+                name: name,
+                transport: "http",
+                command: nil,
+                url: url,
+                args: nil,
+                env: environment,
+                environment: nil,
+                enabled: enable
+            )
+            
+            // Check if server already exists
+            if let servers = config.mcpServers?.allServers,
+               servers.contains(where: { $0.name == name }) {
+                print("❌ MCP server '\(name)' already exists".red)
+                throw ExitCode.failure
+            }
+            
+            // Add to configuration
+            if config.mcpServers == nil {
+                config.mcpServers = .array([])
+            }
+            
+            switch config.mcpServers {
+            case .array(var servers):
+                servers.append(serverDef)
+                config.mcpServers = .array(servers)
+            case .object(var dict):
+                dict[name] = serverDef
+                config.mcpServers = .object(dict)
+            case .none:
+                config.mcpServers = .array([serverDef])
+            }
+            
+            try configManager.updateConfiguration(config)
+            print("✅ Added HTTP MCP server '\(name)'".green)
+            print("   URL: \(url)".lightBlack)
+            
+            if enable {
+                print("   Status: enabled".lightBlack)
+            }
+            
+            // Security warning for HTTP servers
+            print("\n⚠️  Security Notice:".yellow)
+            print("   This URL contains authentication tokens.".yellow)
+            print("   Treat it like a password and do not share it.".yellow)
+        }
+    }
+    
     struct Remove: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             abstract: "Remove an MCP server configuration"
@@ -149,17 +237,41 @@ struct MCPConfigCommand: AsyncParsableCommand {
             for server in servers {
                 let name = server.name ?? "unnamed"
                 let status = (server.enabled ?? true) ? "enabled".green : "disabled".lightBlack
-                print("  • \(name): \(status)")
-                print("    Command: \(server.command)".lightBlack)
-                if let args = server.args, !args.isEmpty {
-                    print("    Args: \(args.joined(separator: " "))".lightBlack)
+                let transport = server.transport ?? "stdio"
+                print("  • \(name): \(status) [\(transport)]")
+                
+                if let command = server.command {
+                    print("    Command: \(command)".lightBlack)
+                    if let args = server.args, !args.isEmpty {
+                        print("    Args: \(args.joined(separator: " "))".lightBlack)
+                    }
+                } else if let url = server.url {
+                    // Mask the URL to hide sensitive tokens
+                    let maskedUrl = maskSensitiveUrl(url)
+                    print("    URL: \(maskedUrl)".lightBlack)
                 }
+                
                 let env = server.env ?? server.environment
                 if let env = env, !env.isEmpty {
                     let envStr = env.map { "\($0.key)=\($0.value)" }.joined(separator: ", ")
                     print("    Environment: \(envStr)".lightBlack)
                 }
             }
+        }
+        
+        private func maskSensitiveUrl(_ url: String) -> String {
+            // Parse URL and mask the path/token portion
+            if let urlComponents = URLComponents(string: url) {
+                var masked = "\(urlComponents.scheme ?? "https")://\(urlComponents.host ?? "")"
+                if let port = urlComponents.port {
+                    masked += ":\(port)"
+                }
+                if let path = urlComponents.path.split(separator: "/").first {
+                    masked += "/\(path)/..."
+                }
+                return masked + " (use 'config get' to see full URL)"
+            }
+            return url
         }
     }
     
@@ -186,10 +298,12 @@ struct MCPConfigCommand: AsyncParsableCommand {
                     print("❌ MCP server '\(name)' not found".red)
                     throw ExitCode.failure
                 }
-                var server = servers[index]
+                let server = servers[index]
                 servers[index] = MCPServerDefinition(
                     name: server.name,
+                    transport: server.transport,
                     command: server.command,
+                    url: server.url,
                     args: server.args,
                     env: server.env,
                     environment: server.environment,
@@ -197,13 +311,15 @@ struct MCPConfigCommand: AsyncParsableCommand {
                 )
                 config.mcpServers = .array(servers)
             case .object(var dict):
-                guard var server = dict[name] else {
+                guard let server = dict[name] else {
                     print("❌ MCP server '\(name)' not found".red)
                     throw ExitCode.failure
                 }
                 dict[name] = MCPServerDefinition(
                     name: server.name ?? name,
+                    transport: server.transport,
                     command: server.command,
+                    url: server.url,
                     args: server.args,
                     env: server.env,
                     environment: server.environment,
@@ -240,10 +356,12 @@ struct MCPConfigCommand: AsyncParsableCommand {
                     print("❌ MCP server '\(name)' not found".red)
                     throw ExitCode.failure
                 }
-                var server = servers[index]
+                let server = servers[index]
                 servers[index] = MCPServerDefinition(
                     name: server.name,
+                    transport: server.transport,
                     command: server.command,
+                    url: server.url,
                     args: server.args,
                     env: server.env,
                     environment: server.environment,
@@ -251,13 +369,15 @@ struct MCPConfigCommand: AsyncParsableCommand {
                 )
                 config.mcpServers = .array(servers)
             case .object(var dict):
-                guard var server = dict[name] else {
+                guard let server = dict[name] else {
                     print("❌ MCP server '\(name)' not found".red)
                     throw ExitCode.failure
                 }
                 dict[name] = MCPServerDefinition(
                     name: server.name ?? name,
+                    transport: server.transport,
                     command: server.command,
+                    url: server.url,
                     args: server.args,
                     env: server.env,
                     environment: server.environment,

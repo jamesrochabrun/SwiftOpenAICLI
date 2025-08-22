@@ -168,17 +168,26 @@ swiftopenai -p "What is the capital of France?"
 swiftopenai chat --interactive
 
 # Interactive mode with plain output
-swiftopenai chat --interactive --plain
+swiftopenai chat \
+  --interactive \
+  --plain
 
 # With specific model
-swiftopenai chat --model gpt-4o "Explain quantum computing"
+swiftopenai chat "Explain quantum computing" \
+  --model gpt-4o
 
 # With GPT-5 models (supports both formats)
-swiftopenai chat --model gpt5 "Write a function" --reasoning minimal
-swiftopenai chat --model gpt-5-mini "Explain this concept" --verbose high
+swiftopenai chat "Write a function" \
+  --model gpt5 \
+  --reasoning minimal
+
+swiftopenai chat "Explain this concept" \
+  --model gpt-5-mini \
+  --verbose high
 
 # With system prompt
-swiftopenai chat --system "You are a helpful assistant" "How do I sort an array?"
+swiftopenai chat "How do I sort an array?" \
+  --system "You are a helpful assistant"
 ```
 
 ### Agent Mode 🤖
@@ -201,21 +210,30 @@ swiftopenai agent --interactive
 swiftopenai agent --interactive --show-tool-events
 
 # Use with MCP servers for tools (--allowed-tools required)
-swiftopenai agent "Read the config.json file" --mcp-servers filesystem --allowed-tools "mcp__filesystem__*"
+swiftopenai agent "Read the config.json file" \
+  --mcp-servers filesystem \
+  --allowed-tools "mcp__filesystem__*"
 ```
 
 #### Advanced Usage
 
 ```bash
 # Stream JSON events (like Claude SDK)
-swiftopenai agent "Calculate the square root of 144" --output-format stream-json
+swiftopenai agent "Calculate the square root of 144" \
+  --output-format stream-json
 
 # With session ID for conversation continuity
-swiftopenai agent "My name is Alice" --session-id abc123
-swiftopenai agent "What's my name?" --session-id abc123  # Remembers Alice
+swiftopenai agent "My name is Alice" \
+  --session-id abc123
+
+swiftopenai agent "What's my name?" \
+  --session-id abc123  # Remembers Alice
 
 # GPT-5 with verbosity and reasoning controls
-swiftopenai agent "Explain quantum computing" --model gpt-5 --model-verbosity high --reasoning high
+swiftopenai agent "Explain quantum computing" \
+  --model gpt-5 \
+  --model-verbosity high \
+  --reasoning high
 
 # MCP tools with JSON output
 swiftopenai agent "Query the database for recent orders" \
@@ -253,10 +271,12 @@ swiftopenai agent --interactive --model gpt-5 --show-tool-events
 
 ```bash
 # Start new conversation
-swiftopenai agent "Hello, I'm working on a Swift project" --session-id work-session
+swiftopenai agent "Hello, I'm working on a Swift project" \
+  --session-id work-session
 
 # Continue conversation (remembers context)
-swiftopenai agent "What language did I mention?" --session-id work-session
+swiftopenai agent "What language did I mention?" \
+  --session-id work-session
 
 # Auto-compaction keeps conversations infinite
 # When reaching context limit, automatically summarizes with GPT-5-mini/gpt-4o-mini
@@ -274,14 +294,19 @@ swiftopenai agent "What language did I mention?" --session-id work-session
 ```bash
 # Complex task with MCP tools (--allowed-tools required)
 swiftopenai agent "List all my GitHub repositories and create an issue about updating documentation" \
-  --mcp-servers github --allowed-tools "mcp__github__*"
+  --mcp-servers github \
+  --allowed-tools "mcp__github__*"
 
 # Code analysis with filesystem MCP
 swiftopenai agent "Read the Package.swift file and explain what dependencies this project uses" \
-  --mcp-servers filesystem --allowed-tools "mcp__filesystem__*"
+  --mcp-servers filesystem \
+  --allowed-tools "mcp__filesystem__*"
 
 # Interactive problem-solving session
-swiftopenai agent --interactive --model gpt-5 --show-tool-events
+swiftopenai agent \
+  --interactive \
+  --model gpt-5 \
+  --show-tool-events
 # You: I need to plan a project that starts today
 # You: Calculate how many work days are in the next 30 days
 # You: What's the date 30 days from now?
@@ -309,13 +334,21 @@ MCP is an open protocol developed by Anthropic that enables AI assistants to sec
 
 ```bash
 # 1. Add the GitHub MCP server to your configuration
-swiftopenai config mcp add github npx --args "@modelcontextprotocol/server-github" --env "GITHUB_PERSONAL_ACCESS_TOKEN=your-token" --enable
+swiftopenai config mcp add github npx \
+  --args "@modelcontextprotocol/server-github" \
+  --env "GITHUB_PERSONAL_ACCESS_TOKEN=your-token" \
+  --enable
 
 # 2. Use it with the agent command (--allowed-tools is REQUIRED for MCP tools)
-swiftopenai agent "List my recent pull requests" --mcp-servers github --allowed-tools "mcp__github__*"
+swiftopenai agent "List my recent pull requests" \
+  --mcp-servers github \
+  --allowed-tools "mcp__github__*"
 
 # 3. Interactive mode for continuous conversations
-swiftopenai agent --interactive --mcp-servers github --allowed-tools "mcp__*"
+swiftopenai agent \
+  --interactive \
+  --mcp-servers github \
+  --allowed-tools "mcp__*"
 # 🚀 MCP servers initialized once for this session (optimized!)
 # You: Create an issue about the bug we discussed
 # You: Show me all open issues
@@ -336,6 +369,7 @@ Popular MCP servers you can use immediately:
 - **Git** (`@modelcontextprotocol/server-git`) - Version control operations
 - **Puppeteer** (`@modelcontextprotocol/server-puppeteer`) - Web scraping and browser automation
 - **Airbnb** (`@openbnb/mcp-server-airbnb`) - Search listings, get details, read reviews
+- **Zapier** - Connect to 7,000+ apps including Gmail, Slack, Notion, and more
 
 Find more at [MCP Servers Repository](https://github.com/modelcontextprotocol/servers)
 
@@ -417,12 +451,23 @@ Edit `~/.swiftopenai/config.json`:
 ##### GitHub Workflow
 ```bash
 # Repository management (--allowed-tools is required for MCP tools)
-swiftopenai agent "Create a new repo called my-project with a README" --mcp-servers github --allowed-tools "mcp__github__*"
-swiftopenai agent "List all issues in repo jamesrochabrun/SwiftOpenAI" --mcp-servers github --allowed-tools "mcp__github__*"
-swiftopenai agent "Create a pull request from feature branch to main" --mcp-servers github --allowed-tools "mcp__github__*"
+swiftopenai agent "Create a new repo called my-project with a README" \
+  --mcp-servers github \
+  --allowed-tools "mcp__github__*"
+
+swiftopenai agent "List all issues in repo jamesrochabrun/SwiftOpenAI" \
+  --mcp-servers github \
+  --allowed-tools "mcp__github__*"
+
+swiftopenai agent "Create a pull request from feature branch to main" \
+  --mcp-servers github \
+  --allowed-tools "mcp__github__*"
 
 # Interactive development session
-swiftopenai agent --interactive --mcp-servers github --allowed-tools "mcp__github__*"
+swiftopenai agent \
+  --interactive \
+  --mcp-servers github \
+  --allowed-tools "mcp__github__*"
 # You: Show me all my starred repositories
 # You: Create an issue in the first one about updating dependencies
 # You: Add a comment to issue #42 with the solution we discussed
@@ -437,11 +482,19 @@ swiftopenai config mcp add postgres npx \
   --enable
 
 # Query database (--allowed-tools required)
-swiftopenai agent "Show me all users created in the last week" --mcp-servers postgres --allowed-tools "mcp__postgres__*"
-swiftopenai agent "What's the total revenue this month?" --mcp-servers postgres --allowed-tools "mcp__postgres__*"
+swiftopenai agent "Show me all users created in the last week" \
+  --mcp-servers postgres \
+  --allowed-tools "mcp__postgres__*"
+
+swiftopenai agent "What's the total revenue this month?" \
+  --mcp-servers postgres \
+  --allowed-tools "mcp__postgres__*"
 
 # Interactive data analysis
-swiftopenai agent --interactive --mcp-servers postgres --allowed-tools "mcp__postgres__*"
+swiftopenai agent \
+  --interactive \
+  --mcp-servers postgres \
+  --allowed-tools "mcp__postgres__*"
 # You: List all tables in the database
 # You: Show me the schema for the orders table
 # You: Calculate the average order value for each month
@@ -455,10 +508,196 @@ swiftopenai config mcp add fs npx \
   --enable
 
 # File operations (--allowed-tools required)
-swiftopenai agent "List all Python files in the current directory" --mcp-servers fs --allowed-tools "mcp__fs__*"
-swiftopenai agent "Read the package.json and summarize dependencies" --mcp-servers fs --allowed-tools "mcp__fs__*"
-swiftopenai agent "Create a new file called notes.md with our discussion" --mcp-servers fs --allowed-tools "mcp__fs__*"
+swiftopenai agent "List all Python files in the current directory" \
+  --mcp-servers fs \
+  --allowed-tools "mcp__fs__*"
+
+swiftopenai agent "Read the package.json and summarize dependencies" \
+  --mcp-servers fs \
+  --allowed-tools "mcp__fs__*"
+
+swiftopenai agent "Create a new file called notes.md with our discussion" \
+  --mcp-servers fs \
+  --allowed-tools "mcp__fs__*"
 ```
+
+##### Zapier Integration (Gmail, Slack, and 7,000+ Apps)
+
+Zapier MCP enables AI integration with thousands of apps through Zapier's platform. This is particularly powerful for Gmail automation, Slack messaging, and connecting to services without direct MCP support.
+
+**Quick Start - Try it in 2 minutes:**
+
+1. Get your Zapier MCP URL from [zapier.com/app/ai-actions](https://zapier.com/app/ai-actions)
+2. Add the Zapier server:
+```bash
+swiftopenai config mcp add-http zapier \
+  "https://mcp.zapier.com/api/mcp/s/YOUR_ZAPIER_TOKEN/mcp" \
+  --enable
+```
+3. Start using Gmail immediately:
+```bash
+# Find emails
+swiftopenai agent "Find my latest unread email" \
+  --mcp-servers zapier \
+  --allowed-tools "mcp__zapier__gmail_find_email"
+
+# Interactive mode for email management
+swiftopenai agent \
+  --interactive \
+  --mcp-servers zapier \
+  --allowed-tools "mcp__zapier__gmail_*"
+```
+
+**Gmail Examples:**
+
+```bash
+# Find emails
+swiftopenai agent "Find my latest email" \
+  --mcp-servers zapier \
+  --allowed-tools "mcp__zapier__gmail_find_email" \
+  --model gpt-4o-mini
+
+# Send an email
+swiftopenai agent "Send an email to team@company.com saying 'Meeting confirmed for 3pm tomorrow'" \
+  --mcp-servers zapier \
+  --allowed-tools "mcp__zapier__gmail_send_email"
+
+# Create a draft
+swiftopenai agent "Create a draft email to hello@example.com with subject 'Project Update' and body 'The project is on track for Q1 delivery'" \
+  --mcp-servers zapier \
+  --allowed-tools "mcp__zapier__gmail_create_draft"
+
+# Reply to emails
+swiftopenai agent "Find the email from John about the budget and reply saying 'Approved, please proceed'" \
+  --mcp-servers zapier \
+  --allowed-tools "mcp__zapier__gmail_find_email,mcp__zapier__gmail_reply_to_email"
+
+# Manage labels
+swiftopenai agent "Create a new Gmail label called 'Important-2025'" \
+  --mcp-servers zapier \
+  --allowed-tools "mcp__zapier__gmail_create_label"
+
+swiftopenai agent "Find all emails from Amazon and add the 'Receipts' label" \
+  --mcp-servers zapier \
+  --allowed-tools "mcp__zapier__gmail_find_email,mcp__zapier__gmail_add_label_to_email"
+
+# Archive and delete
+swiftopenai agent "Archive all emails older than 30 days with the label 'Processed'" \
+  --mcp-servers zapier \
+  --allowed-tools "mcp__zapier__gmail_find_email,mcp__zapier__gmail_archive_email"
+```
+
+**Interactive Gmail Session:**
+
+```bash
+swiftopenai agent \
+  --interactive \
+  --mcp-servers zapier \
+  --allowed-tools "mcp__zapier__gmail_*" \
+  --model gpt-4o-mini
+
+# You: Find my unread emails from today
+# You: Summarize the important ones
+# You: Create a draft reply to the most urgent one
+# You: Add the "ToDo" label to emails that need follow-up
+```
+
+**Real-World Interactive Examples:**
+
+```bash
+# Email Triage Session
+swiftopenai agent \
+  --interactive \
+  --mcp-servers zapier \
+  --allowed-tools "mcp__zapier__gmail_*"
+
+# You: Find all unread emails from the last 3 days
+# Assistant: I found 24 unread emails from the last 3 days...
+# You: Which ones are from my manager or marked as high priority?
+# Assistant: I found 3 emails from your manager...
+# You: Create draft replies for each of them acknowledging receipt
+# Assistant: I've created 3 draft replies...
+# You: Archive all newsletter emails
+# Assistant: I've archived 8 newsletter emails...
+
+# Email Cleanup Session
+swiftopenai agent \
+  --interactive \
+  --mcp-servers zapier \
+  --allowed-tools "mcp__zapier__*" \
+  --model gpt-4o-mini
+
+# You: How many emails do I have with the label "To Review"?
+# Assistant: You have 47 emails labeled "To Review"...
+# You: Show me the oldest 5
+# Assistant: Here are the 5 oldest emails...
+# You: Delete anything older than 6 months
+# Assistant: I've moved 23 emails older than 6 months to trash...
+# You: Create a new label called "Archive-2024" and apply it to all reviewed emails from 2024
+# Assistant: Created label "Archive-2024" and applied it to 15 emails...
+
+# Daily Email Workflow
+swiftopenai agent \
+  --interactive \
+  --mcp-servers zapier \
+  --allowed-tools "mcp__zapier__gmail_*"
+
+# You: Good morning! What important emails came in overnight?
+# Assistant: Good morning! You received 3 important emails overnight...
+# You: Send a quick reply to Sarah saying I'll review the document by noon
+# Assistant: I've sent the reply to Sarah confirming you'll review by noon...
+# You: Create a calendar reminder for that review at 11:30am
+# You: Find all emails about the Q1 planning meeting
+# Assistant: I found 7 emails about Q1 planning...
+# You: Create a summary document of the key points discussed
+# Assistant: Here's a summary of the Q1 planning discussions...
+```
+
+**Available Zapier Gmail Tools:**
+- `mcp__zapier__gmail_find_email` - Search and find emails
+- `mcp__zapier__gmail_send_email` - Send new emails
+- `mcp__zapier__gmail_create_draft` - Create draft emails
+- `mcp__zapier__gmail_create_draft_reply` - Create draft replies
+- `mcp__zapier__gmail_reply_to_email` - Send replies
+- `mcp__zapier__gmail_add_label_to_email` - Add labels
+- `mcp__zapier__gmail_remove_label_from_email` - Remove labels
+- `mcp__zapier__gmail_create_label` - Create new labels
+- `mcp__zapier__gmail_archive_email` - Archive emails
+- `mcp__zapier__gmail_delete_email` - Move to trash
+- `mcp__zapier__add_tools` - Add new Zapier actions
+- `mcp__zapier__edit_tools` - Edit existing actions
+
+**Advanced Zapier Workflows:**
+
+```bash
+# Email management workflow
+swiftopenai agent \
+  --interactive \
+  --mcp-servers zapier \
+  --allowed-tools "mcp__zapier__*"
+# You: Find all newsletter emails from this week
+# You: Create a summary of the key points
+# You: Draft an email to my team with the summary
+# You: Archive the original newsletters
+
+# Customer support automation
+swiftopenai agent "Find all customer support emails from today, categorize them by urgency, and create draft responses for each" \
+  --mcp-servers zapier \
+  --allowed-tools "mcp__zapier__gmail_*"
+
+# Email analytics
+swiftopenai agent "Analyze my email patterns: who do I email most, what times do I send emails, and what are common subjects" \
+  --mcp-servers zapier \
+  --allowed-tools "mcp__zapier__gmail_find_email" \
+  --output-format json
+```
+
+**Tips for Zapier MCP:**
+- Zapier requires specific headers that our custom transport handles automatically
+- The connection may take a moment to initialize (HTTP 202 responses are normal)
+- Use `--model gpt-4o-mini` for cost-effective email operations
+- Always use `--allowed-tools` to explicitly grant permissions
+- Gmail queries support advanced search syntax (e.g., "from:boss subject:urgent")
 
 ##### Multi-Server Usage
 ```bash
@@ -530,7 +769,10 @@ Non-interactive mode creates fresh connections for each command (stateless execu
 ##### Development Workflow
 ```bash
 # Morning standup prep
-swiftopenai agent --interactive --mcp-servers github,postgres --allowed-tools "mcp__*"
+swiftopenai agent \
+  --interactive \
+  --mcp-servers github,postgres \
+  --allowed-tools "mcp__*"
 # You: Show me all PRs assigned to me
 # You: Check if the database has the migrations from PR #123
 # You: List all issues labeled 'bug' created yesterday
@@ -540,7 +782,10 @@ swiftopenai agent --interactive --mcp-servers github,postgres --allowed-tools "m
 ##### Content Management
 ```bash
 # Blog post workflow
-swiftopenai agent --interactive --mcp-servers fs,github --allowed-tools "mcp__*"
+swiftopenai agent \
+  --interactive \
+  --mcp-servers fs,github \
+  --allowed-tools "mcp__*"
 # You: Read all markdown files in the blog directory
 # You: Create a new post about MCP integration
 # You: Generate a table of contents
@@ -550,7 +795,10 @@ swiftopenai agent --interactive --mcp-servers fs,github --allowed-tools "mcp__*"
 ##### Data Analysis
 ```bash
 # Sales analysis
-swiftopenai agent --interactive --mcp-servers postgres --allowed-tools "mcp__postgres__*"
+swiftopenai agent \
+  --interactive \
+  --mcp-servers postgres \
+  --allowed-tools "mcp__postgres__*"
 # You: Show me total sales by region this quarter
 # You: Calculate the month-over-month growth rate
 # You: Which products have the highest margin?
@@ -576,13 +824,17 @@ swiftopenai config mcp list
 # Verify the env vars show correctly
 
 # Test with a simple command
-swiftopenai agent "Test connection" --mcp-servers github --show-mcp-status
+swiftopenai agent "Test connection" \
+  --mcp-servers github \
+  --show-mcp-status
 ```
 
 **Tool not found:**
 ```bash
 # List all available tools
-swiftopenai agent "What tools are available?" --mcp-servers github --show-mcp-status
+swiftopenai agent "What tools are available?" \
+  --mcp-servers github \
+  --show-mcp-status
 
 # Tools are named: mcp__serverName__toolName
 # Use --allowed-tools with correct pattern
@@ -592,7 +844,9 @@ swiftopenai agent "Do something" --allowed-tools "mcp__github__*"
 **Server not connecting:**
 ```bash
 # Enable verbose output
-swiftopenai agent "Test" --mcp-servers myserver --show-mcp-status
+swiftopenai agent "Test" \
+  --mcp-servers myserver \
+  --show-mcp-status
 
 # Check server is enabled
 swiftopenai config mcp list

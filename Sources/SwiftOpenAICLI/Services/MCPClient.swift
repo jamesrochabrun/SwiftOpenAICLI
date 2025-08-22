@@ -4,7 +4,9 @@ import Rainbow
 
 struct MCPServerConfig {
     let name: String
-    let command: String
+    let transport: String  // "stdio" or "http"
+    let command: String?  // For stdio transport
+    let url: String?  // For http transport
     let args: [String]
     let environment: [String: String]?
 }
@@ -38,29 +40,86 @@ actor MCPClient {
             configuration: .default
         )
         
-        // Create process transport to launch the server
-        // When using stderr for our output, disable ProcessTransport verbose to avoid stdout pollution
-        let transport = ProcessTransport(
-            command: config.command,
-            args: config.args,
-            environment: config.environment,
-            verbose: verbose && !useStderr
-        )
-        
-        let initResult = try await client.connect(transport: transport)
-        
-        if verbose {
-            printStatus("✅ Connected to: \(initResult.serverInfo.name) v\(initResult.serverInfo.version)".green)
-            let capabilities = initResult.capabilities
-            if capabilities.tools != nil {
-                printStatus("   Tools: supported".lightBlack)
+        // Choose transport based on type
+        if config.transport == "http", let urlString = config.url, let url = URL(string: urlString) {
+            if verbose {
+                printStatus("   Using HTTP transport: \(url)".lightBlack)
             }
-            if capabilities.resources != nil {
-                printStatus("   Resources: supported".lightBlack)
+            
+            // Check if this is a Zapier URL - use custom transport for proper header handling
+            let transport: any Transport
+            if url.host?.contains("zapier.com") == true {
+                if verbose {
+                    printStatus("   Detected Zapier MCP server, using custom transport".lightBlack)
+                }
+                transport = ZapierHTTPTransport(endpoint: url)
+            } else {
+                if verbose {
+                    printStatus("   Using standard HTTPClientTransport".lightBlack)
+                }
+                transport = HTTPClientTransport(
+                    endpoint: url,
+                    streaming: true  // Enable Server-Sent Events for real-time updates
+                )
             }
-            if capabilities.prompts != nil {
-                printStatus("   Prompts: supported".lightBlack)
+            
+            if verbose {
+                printStatus("   Attempting to connect...".lightBlack)
             }
+            
+            do {
+                let initResult = try await client.connect(transport: transport)
+                
+                if verbose {
+                    printStatus("✅ Connected to: \(initResult.serverInfo.name) v\(initResult.serverInfo.version)".green)
+                    let capabilities = initResult.capabilities
+                    if capabilities.tools != nil {
+                        printStatus("   Tools: supported".lightBlack)
+                    }
+                    if capabilities.resources != nil {
+                        printStatus("   Resources: supported".lightBlack)
+                    }
+                    if capabilities.prompts != nil {
+                        printStatus("   Prompts: supported".lightBlack)
+                    }
+                }
+            } catch {
+                if verbose {
+                    printStatus("❌ Failed to connect to HTTP server: \(error)".red)
+                }
+                throw error
+            }
+        } else if let command = config.command {
+            // Create process transport to launch local server
+            if verbose {
+                printStatus("   Using stdio transport: \(command)".lightBlack)
+            }
+            
+            // When using stderr for our output, disable ProcessTransport verbose to avoid stdout pollution
+            let transport = ProcessTransport(
+                command: command,
+                args: config.args,
+                environment: config.environment,
+                verbose: verbose && !useStderr
+            )
+            
+            let initResult = try await client.connect(transport: transport)
+            
+            if verbose {
+                printStatus("✅ Connected to: \(initResult.serverInfo.name) v\(initResult.serverInfo.version)".green)
+                let capabilities = initResult.capabilities
+                if capabilities.tools != nil {
+                    printStatus("   Tools: supported".lightBlack)
+                }
+                if capabilities.resources != nil {
+                    printStatus("   Resources: supported".lightBlack)
+                }
+                if capabilities.prompts != nil {
+                    printStatus("   Prompts: supported".lightBlack)
+                }
+            }
+        } else {
+            throw MCPError.invalidConfiguration("Server \(config.name) has neither command nor URL")
         }
         
         activeClients[config.name] = client
@@ -161,6 +220,7 @@ enum MCPError: LocalizedError {
     case serverNotConnected(String)
     case toolExecutionFailed(String)
     case invalidArguments
+    case invalidConfiguration(String)
     
     var errorDescription: String? {
         switch self {
@@ -170,6 +230,8 @@ enum MCPError: LocalizedError {
             return "Tool execution failed: \(message)"
         case .invalidArguments:
             return "Invalid arguments provided"
+        case .invalidConfiguration(let message):
+            return "Invalid configuration: \(message)"
         }
     }
 }

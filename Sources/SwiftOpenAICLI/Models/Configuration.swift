@@ -75,7 +75,9 @@ enum MCPServersConfig: Codable {
 
 struct MCPServerDefinition: Codable {
     var name: String?  // Optional because in object format, name comes from the key
-    let command: String
+    let transport: String?  // "stdio" (default) or "http"
+    let command: String?  // Required for stdio transport
+    let url: String?  // Required for http transport
     let args: [String]?
     let env: [String: String]?  // Claude Code SDK uses 'env' not 'environment'
     let environment: [String: String]?  // Support legacy format
@@ -83,17 +85,62 @@ struct MCPServerDefinition: Codable {
     
     private enum CodingKeys: String, CodingKey {
         case name
+        case transport
         case command
+        case url
         case args
         case env
         case environment
         case enabled
     }
     
+    // Custom init to maintain backward compatibility
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        name = try container.decodeIfPresent(String.self, forKey: .name)
+        transport = try container.decodeIfPresent(String.self, forKey: .transport)
+        command = try container.decodeIfPresent(String.self, forKey: .command)
+        url = try container.decodeIfPresent(String.self, forKey: .url)
+        args = try container.decodeIfPresent([String].self, forKey: .args)
+        env = try container.decodeIfPresent([String: String].self, forKey: .env)
+        environment = try container.decodeIfPresent([String: String].self, forKey: .environment)
+        enabled = try container.decodeIfPresent(Bool.self, forKey: .enabled)
+        
+        // Validate: must have either command (stdio) or url (http)
+        if command == nil && url == nil {
+            // For backward compatibility, if transport is not specified and command exists, assume stdio
+            throw DecodingError.dataCorruptedError(
+                forKey: .command,
+                in: container,
+                debugDescription: "MCP server must have either 'command' for stdio transport or 'url' for HTTP transport"
+            )
+        }
+    }
+    
+    init(name: String? = nil, 
+         transport: String? = nil,
+         command: String? = nil,
+         url: String? = nil,
+         args: [String]? = nil,
+         env: [String: String]? = nil,
+         environment: [String: String]? = nil,
+         enabled: Bool? = nil) {
+        self.name = name
+        self.transport = transport
+        self.command = command
+        self.url = url
+        self.args = args
+        self.env = env
+        self.environment = environment
+        self.enabled = enabled
+    }
+    
     var toMCPServerConfig: MCPServerConfig {
         return MCPServerConfig(
             name: name ?? "",
+            transport: transport ?? (url != nil ? "http" : "stdio"),
             command: command,
+            url: url,
             args: args ?? [],
             environment: env ?? environment  // Use env if available, fall back to environment
         )
