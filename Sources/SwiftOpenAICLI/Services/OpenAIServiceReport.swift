@@ -14,13 +14,15 @@ extension OpenAIService {
     reasoning: String = "medium",
     mcpServers: [MCPServerConfig] = [],
     timeout: Int = 120,
-    maxToolCalls: Int = 30
+    maxToolCalls: Int = 30,
+    showToolEvents: Bool = false,
+    showToolEventsVerbose: Bool = false
   ) async throws -> String {
     let toolExecutor = ToolExecutor(
       mcpServers: mcpServers,
-      verbose: false,
+      verbose: showToolEvents,
       useStderr: false,
-      showToolEventsVerbose: false
+      showToolEventsVerbose: showToolEventsVerbose
     )
     await toolExecutor.initialize()
     
@@ -81,11 +83,25 @@ extension OpenAIService {
           // Execute tools
           for toolCall in toolCalls {
             guard let toolName = toolCall.function.name else { continue }
+            
+            if showToolEvents {
+              print("→ Calling tool: \(toolName)...")
+              if showToolEventsVerbose {
+                print("   Arguments: \(toolCall.function.arguments)")
+              }
+            }
+            
             let result = try await toolExecutor.executeTool(
               name: toolName,
-              arguments: toolCall.function.arguments ?? "{}",
-              outputFormat: "silent"
+              arguments: toolCall.function.arguments,
+              outputFormat: showToolEvents ? "plain" : "silent"
             )
+            
+            if showToolEvents && !showToolEventsVerbose {
+              // Show truncated result
+              let truncated = toolExecutor.truncateForDisplay(result)
+              print("← Result: \(truncated)")
+            }
             
             conversationMessages.append(.init(
               role: .tool,

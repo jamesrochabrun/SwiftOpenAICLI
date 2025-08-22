@@ -141,12 +141,12 @@ struct OpenAICLI: AsyncParsableCommand {
     • For debug output: Build with 'swift build' (debug mode)
     • For production: Build with 'swift build -c release'
 
-    VERSION: 1.4.0
+    VERSION: 1.4.1
     
     For more information and updates, visit:
     https://github.com/jamesrochabrun/SwiftOpenAICLI
     """,
-    version: "1.4.0",
+    version: "1.4.1",
     subcommands: [
       ChatCommand.self,
       AgentCommand.self,

@@ -31,8 +31,8 @@ struct ReportCommand: AsyncParsableCommand {
   @Option(name: .long, help: "Enable MCP servers (comma-separated)")
   var mcpServers: String?
   
-  @Option(name: .long, help: "Include screenshots from web pages")
-  var includeScreenshots: Bool = false
+  @Flag(name: .long, help: "Include screenshots from web pages")
+  var includeScreenshots = false
   
   @Option(name: .long, help: "Maximum tool calls")
   var maxToolCalls: Int = 30
@@ -45,6 +45,12 @@ struct ReportCommand: AsyncParsableCommand {
   
   @Flag(name: [.short, .long], help: "Verbose output")
   var verbose = false
+  
+  @Flag(name: .long, help: "Show tool execution events")
+  var showToolEvents = false
+  
+  @Flag(name: .long, help: "Show full tool results without truncation")
+  var showToolEventsVerbose = false
   
   mutating func run() async throws {
     // Default system prompt for reports
@@ -128,14 +134,16 @@ struct ReportCommand: AsyncParsableCommand {
       message: query,
       model: model,
       system: system,
-      temperature: 0.7,
+      temperature: 1.0,  // GPT-5 models only support 1.0
       maxTokens: nil,
       enabledTools: enabledTools,
       verbose: verbose ? "high" : "low",
       reasoning: "medium",
       mcpServers: mcpConfigs,
       timeout: 120,
-      maxToolCalls: maxToolCalls
+      maxToolCalls: maxToolCalls,
+      showToolEvents: showToolEvents || verbose,
+      showToolEventsVerbose: showToolEventsVerbose
     )
     
     // Add metadata
