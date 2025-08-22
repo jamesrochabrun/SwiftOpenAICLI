@@ -25,6 +25,7 @@ struct OpenAICLI: AsyncParsableCommand {
     MAIN COMMANDS:
     • chat      - Chat with OpenAI models (GPT-4, GPT-5, etc.)
     • agent     - Advanced mode with tool support and MCP integration
+    • report    - Generate research reports with PDF export
     • image     - Generate images with DALL-E
     • models    - List available models
     • complete  - Text completion (legacy)
@@ -140,15 +141,16 @@ struct OpenAICLI: AsyncParsableCommand {
     • For debug output: Build with 'swift build' (debug mode)
     • For production: Build with 'swift build -c release'
 
-    VERSION: 1.3.9
+    VERSION: 1.4.0
     
     For more information and updates, visit:
     https://github.com/jamesrochabrun/SwiftOpenAICLI
     """,
-    version: "1.3.9",
+    version: "1.4.0",
     subcommands: [
       ChatCommand.self,
       AgentCommand.self,
+      ReportCommand.self,
       ImageCommand.self,
       ModelsCommand.self,
       CompleteCommand.self,
