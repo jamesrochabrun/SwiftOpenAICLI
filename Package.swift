@@ -12,10 +12,6 @@ let package = Package(
         .executable(
             name: "swiftopenai",
             targets: ["SwiftOpenAICLI"]
-        ),
-        .library(
-            name: "SwiftOpenAICLICore",
-            targets: ["SwiftOpenAICLI"]
         )
     ],
     dependencies: [
