@@ -373,7 +373,218 @@ Popular MCP servers you can use immediately:
 
 Find more at [MCP Servers Repository](https://github.com/modelcontextprotocol/servers)
 
-#### Configuration
+### Local Tools Registry 🛠️
+
+In addition to MCP servers, SwiftOpenAI-CLI supports custom local tools defined via JSON configuration files. This allows you to extend the agent's capabilities with your own shell commands and scripts without modifying the CLI.
+
+#### What are Local Tools?
+
+Local tools are custom commands that the AI agent can execute on your behalf:
+- **Shell commands** - Run any command-line tool with parameter interpolation
+- **Custom scripts** - Execute Python, Bash, or any other scripts
+- **System utilities** - Integrate with local development tools
+- **Workflow automation** - Chain commands for complex operations
+
+#### Quick Start
+
+1. Create a tools configuration file (`tools.json`):
+```json
+{
+  "tools": [
+    {
+      "name": "search_code",
+      "description": "Search for code patterns in the project",
+      "command": "grep -r '{{pattern}}' {{directory}}",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "pattern": {
+            "type": "string",
+            "description": "The pattern to search for"
+          },
+          "directory": {
+            "type": "string",
+            "description": "Directory to search in"
+          }
+        }
+      }
+    }
+  ]
+}
+```
+
+2. Use with the agent command:
+```bash
+# Single command
+swiftopenai agent "Search for TODO comments in src folder" \
+  --local-tools-config ./tools.json
+
+# Interactive mode with local tools
+swiftopenai agent --interactive \
+  --local-tools-config ~/.my-tools.json
+
+# Combine with MCP servers
+swiftopenai agent "Search code and create GitHub issue" \
+  --local-tools-config ./tools.json \
+  --mcp-servers github \
+  --allowed-tools "local__*,mcp__github__*"
+```
+
+#### Configuration Format
+
+Each tool in the configuration requires:
+- `name` - Tool identifier (automatically prefixed with `local__` internally)
+- `description` - What the tool does (helps AI decide when to use it)
+- `command` or `script` - The command to execute or script path
+- `parameters` - JSON Schema defining the tool's parameters
+- `working_directory` (optional) - Directory to execute the command in
+
+##### Command Interpolation
+
+Use `{{parameter}}` syntax for parameter substitution:
+```json
+{
+  "command": "curl -X {{method}} '{{url}}' -H 'Content-Type: {{content_type}}'"
+}
+```
+
+Parameters are automatically escaped for shell safety.
+
+##### Script Execution
+
+For complex logic, use scripts instead of commands:
+```json
+{
+  "name": "analyze_logs",
+  "description": "Analyze application logs",
+  "script": "/usr/local/bin/analyze-logs.py",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "log_file": {"type": "string"},
+      "date_range": {"type": "string"}
+    }
+  }
+}
+```
+
+Scripts receive parameters as JSON in the first argument.
+
+#### Complete Example
+
+```json
+{
+  "tools": [
+    {
+      "name": "git_status",
+      "description": "Get git repository status",
+      "command": "git status --short",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "run_tests",
+      "description": "Run tests with coverage",
+      "command": "npm test -- {{test_pattern}} --coverage",
+      "working_directory": "./project",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "test_pattern": {
+            "type": "string",
+            "description": "Test file pattern"
+          }
+        }
+      }
+    },
+    {
+      "name": "docker_ps",
+      "description": "List running Docker containers",
+      "command": "docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "find_large_files",
+      "description": "Find files larger than specified size",
+      "command": "find {{path}} -type f -size +{{size}} -exec ls -lh {} \\;",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Directory to search"
+          },
+          "size": {
+            "type": "string",
+            "description": "Minimum file size (e.g., '10M', '1G')"
+          }
+        }
+      }
+    }
+  ]
+}
+```
+
+#### Usage Patterns
+
+##### Development Workflow
+```bash
+# Set up your development tools
+swiftopenai agent --interactive \
+  --local-tools-config ~/.dev-tools.json \
+  --model gpt-4o
+
+# Available tools: git_status, run_tests, lint_code, build_project
+You: Check git status and run tests for the auth module
+```
+
+##### System Administration
+```bash
+# System monitoring and maintenance
+swiftopenai agent "Check system resources and Docker containers" \
+  --local-tools-config ~/.sys-tools.json
+```
+
+##### Mixed Tool Usage
+```bash
+# Combine local tools with MCP servers
+swiftopenai agent --interactive \
+  --local-tools-config ./project-tools.json \
+  --mcp-servers github,slack \
+  --allowed-tools "*"  # Allow all tools
+
+You: Run tests, and if they pass, create a GitHub PR
+```
+
+#### Security Considerations
+
+- **Parameter Escaping**: All parameters are automatically escaped to prevent shell injection
+- **Working Directory**: Tools can be restricted to specific directories
+- **No Prefix Required**: Users never need to type `local__` prefix - it's added automatically
+- **Explicit Permissions**: Like MCP tools, use `--allowed-tools` to control which tools are available
+
+#### Tool Selection
+
+Tools can be selected using patterns:
+- `search_code` - Use tool by name (prefix added automatically)
+- `local__*` - All local tools
+- `local__git_*` - All local tools starting with "git_"
+- `*` - All tools (both local and MCP)
+
+#### Best Practices
+
+1. **Descriptive Names**: Use clear, action-oriented names
+2. **Detailed Descriptions**: Help the AI understand when to use each tool
+3. **Parameter Validation**: Define required parameters in the schema
+4. **Error Handling**: Tools should return meaningful error messages
+5. **Composability**: Design tools that work well together
+
+#### MCP Configuration
 
 ##### Method 1: CLI Commands (Recommended)
 

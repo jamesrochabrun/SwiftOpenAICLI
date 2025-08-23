@@ -126,7 +126,9 @@ final class ToolExecutorTests: XCTestCase {
     func testMCPServerConfiguration() {
         let mcpConfig = MCPServerConfig(
             name: "test-server",
+            transport: "stdio",
             command: "echo",
+            url: nil,
             args: ["test"],
             environment: nil
         )
@@ -140,7 +142,9 @@ final class ToolExecutorTests: XCTestCase {
     func testMCPServerWithEnvironment() {
         let mcpConfig = MCPServerConfig(
             name: "test-server",
+            transport: "stdio",
             command: "node",
+            url: nil,
             args: ["server.js"],
             environment: ["NODE_ENV": "test"]
         )
@@ -162,6 +166,159 @@ final class ToolExecutorTests: XCTestCase {
         let argsData = arguments.data(using: .utf8)!
         let args = try? JSONSerialization.jsonObject(with: argsData)
         XCTAssertNil(args)
+    }
+    
+    // MARK: - Local Tool Registration Tests
+    
+    func testRegisterLocalTool() async throws {
+        let executor = ToolExecutor(
+            mcpServers: [],
+            localToolsConfigPath: nil,
+            verbose: false,
+            useStderr: false,
+            showToolEventsVerbose: false
+        )
+        
+        let tool = LocalTool(
+            name: "test_tool",
+            description: "A test tool",
+            command: "echo 'test'",
+            parameters: JSONSchema(type: .object, properties: [:], required: [])
+        )
+        
+        executor.registerLocalTool(tool)
+        
+        let allTools = executor.getAllAvailableToolNames()
+        XCTAssertTrue(allTools.contains("local__test_tool"))
+    }
+    
+    func testLoadLocalToolsFromConfig() async throws {
+        // Create a temporary config file
+        let tempDir = FileManager.default.temporaryDirectory
+        let configPath = tempDir.appendingPathComponent("test-tools.json").path
+        
+        let config = """
+        {
+            "tools": [
+                {
+                    "name": "test_tool",
+                    "description": "Test tool",
+                    "command": "echo {{message}}",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "message": {
+                                "type": "string",
+                                "description": "Message to echo"
+                            }
+                        }
+                    }
+                }
+            ]
+        }
+        """
+        
+        try config.write(toFile: configPath, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(atPath: configPath) }
+        
+        let executor = ToolExecutor(
+            mcpServers: [],
+            localToolsConfigPath: configPath,
+            verbose: false,
+            useStderr: false,
+            showToolEventsVerbose: false
+        )
+        
+        await executor.initialize()
+        
+        let allTools = executor.getAllAvailableToolNames()
+        XCTAssertTrue(allTools.contains("local__test_tool"))
+    }
+    
+    func testMixedToolResolution() async throws {
+        let executor = ToolExecutor(
+            mcpServers: [],
+            localToolsConfigPath: nil,
+            verbose: false,
+            useStderr: false,
+            showToolEventsVerbose: false
+        )
+        
+        // Register a local tool
+        let localTool = LocalTool(
+            name: "local_tool",
+            description: "Local tool",
+            command: "echo",
+            parameters: JSONSchema(type: .object, properties: [:], required: [])
+        )
+        executor.registerLocalTool(localTool)
+        
+        // Test that we can get tools by simple name (without prefix)
+        let tools1 = executor.getToolDefinitions(for: Set(["local_tool"]))
+        XCTAssertEqual(tools1.count, 1)
+        XCTAssertEqual(tools1.first?.function.name, "local__local_tool")
+        
+        // Test with prefix
+        let tools2 = executor.getToolDefinitions(for: Set(["local__local_tool"]))
+        XCTAssertEqual(tools2.count, 1)
+        
+        // Test glob pattern for all local tools
+        let tools3 = executor.getToolDefinitions(for: Set(["local__*"]))
+        XCTAssertEqual(tools3.count, 1)
+    }
+    
+    func testLocalToolGlobPatterns() async throws {
+        let executor = ToolExecutor(
+            mcpServers: [],
+            localToolsConfigPath: nil,
+            verbose: false,
+            useStderr: false,
+            showToolEventsVerbose: false
+        )
+        
+        // Register multiple local tools
+        for i in 1...3 {
+            let tool = LocalTool(
+                name: "tool_\(i)",
+                description: "Tool \(i)",
+                command: "echo \(i)",
+                parameters: JSONSchema(type: .object, properties: [:], required: [])
+            )
+            executor.registerLocalTool(tool)
+        }
+        
+        // Test wildcard pattern
+        let tools = executor.getToolDefinitions(for: Set(["local__*"]))
+        XCTAssertEqual(tools.count, 3)
+        
+        // Test specific pattern
+        let tools2 = executor.getToolDefinitions(for: Set(["local__tool_1", "local__tool_2"]))
+        XCTAssertEqual(tools2.count, 2)
+    }
+    
+    func testToolExecutorCleanup() async throws {
+        let executor = ToolExecutor(
+            mcpServers: [],
+            localToolsConfigPath: nil,
+            verbose: false,
+            useStderr: false,
+            showToolEventsVerbose: false
+        )
+        
+        // Register a tool
+        let tool = LocalTool(
+            name: "test",
+            description: "Test",
+            command: "echo",
+            parameters: JSONSchema(type: .object, properties: [:], required: [])
+        )
+        executor.registerLocalTool(tool)
+        
+        XCTAssertFalse(executor.getAllAvailableToolNames().isEmpty)
+        
+        // Cleanup should remove all tools
+        await executor.cleanup()
+        XCTAssertTrue(executor.getAllAvailableToolNames().isEmpty)
     }
 }
 

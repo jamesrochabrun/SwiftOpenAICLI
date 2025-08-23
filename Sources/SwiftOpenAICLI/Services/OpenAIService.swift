@@ -190,11 +190,11 @@ final class OpenAIService {
     return response.data.first?.embedding ?? []
   }
   
-  func agentChat(message: String, model: String, system: String? = nil, temperature: Double = 1.0, maxTokens: Int? = nil, outputFormat: String = "plain", enabledTools: Set<String>?, verbose: String = "medium", reasoning: String = "medium", sessionId: String? = nil, mcpServers: [MCPServerConfig] = [], showMCPStatus: Bool = false, timeout: Int = 60, showToolEventsVerbose: Bool = false, maxToolCalls: Int = 10) async throws {
+  func agentChat(message: String, model: String, system: String? = nil, temperature: Double = 1.0, maxTokens: Int? = nil, outputFormat: String = "plain", enabledTools: Set<String>?, verbose: String = "medium", reasoning: String = "medium", sessionId: String? = nil, mcpServers: [MCPServerConfig] = [], localToolsConfig: String? = nil, showMCPStatus: Bool = false, timeout: Int = 60, showToolEventsVerbose: Bool = false, maxToolCalls: Int = 10) async throws {
     let useStderr = (outputFormat == "json" || outputFormat == "stream-json")
     // Show MCP status if explicitly requested OR if using plain output format
     let showMCP = showMCPStatus || outputFormat == "plain"
-    let toolExecutor = ToolExecutor(mcpServers: mcpServers, verbose: showMCP, useStderr: useStderr, showToolEventsVerbose: showToolEventsVerbose)
+    let toolExecutor = ToolExecutor(mcpServers: mcpServers, localToolsConfigPath: localToolsConfig, verbose: showMCP, useStderr: useStderr, showToolEventsVerbose: showToolEventsVerbose)
     
     // Initialize MCP servers if any
     await toolExecutor.initialize()

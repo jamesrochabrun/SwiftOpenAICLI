@@ -9,9 +9,11 @@ class ToolExecutor {
   private let verbose: Bool
   private let useStderr: Bool
   private let showToolEventsVerbose: Bool
+  private var localToolsConfigPath: String?
   
-  init(mcpServers: [MCPServerConfig] = [], verbose: Bool = false, useStderr: Bool = false, showToolEventsVerbose: Bool = false) {
+  init(mcpServers: [MCPServerConfig] = [], localToolsConfigPath: String? = nil, verbose: Bool = false, useStderr: Bool = false, showToolEventsVerbose: Bool = false) {
     self.mcpServers = mcpServers
+    self.localToolsConfigPath = localToolsConfigPath
     self.verbose = verbose
     self.useStderr = useStderr
     self.showToolEventsVerbose = showToolEventsVerbose
@@ -20,6 +22,10 @@ class ToolExecutor {
   func initialize() async {
     if !mcpServers.isEmpty {
       await initializeMCPServers(verbose: self.verbose)
+    }
+    
+    if let localToolsConfigPath = localToolsConfigPath {
+      loadLocalTools(from: localToolsConfigPath)
     }
   }
   
@@ -51,18 +57,28 @@ class ToolExecutor {
             }
           }
         } else {
-          // Exact match
+          // Exact match - check both with and without prefixes
           if availableTools[pattern] != nil {
             effectiveToolNames.insert(pattern)
+          } else {
+            // Try with prefixes if not already prefixed
+            if !pattern.hasPrefix("mcp__") && !pattern.hasPrefix("local__") {
+              let mcpName = "mcp__\(pattern)"
+              let localName = "local__\(pattern)"
+              if availableTools[mcpName] != nil {
+                effectiveToolNames.insert(mcpName)
+              }
+              if availableTools[localName] != nil {
+                effectiveToolNames.insert(localName)
+              }
+            }
           }
         }
       }
     } else {
-      // No specific tools requested, include all MCP tools
+      // No specific tools requested, include all tools (MCP and local)
       for toolName in availableTools.keys {
-        if toolName.hasPrefix("mcp__") {
-          effectiveToolNames.insert(toolName)
-        }
+        effectiveToolNames.insert(toolName)
       }
     }
     
@@ -160,15 +176,27 @@ class ToolExecutor {
   }
   
   func printAvailableTools() {
-    print("Available MCP tools:".cyan)
-    
     let mcpTools = availableTools.filter { $0.key.hasPrefix("mcp__") }
+    let localTools = availableTools.filter { $0.key.hasPrefix("local__") }
+    
     if !mcpTools.isEmpty {
+      print("Available MCP tools:".cyan)
       for (name, tool) in mcpTools.sorted(by: { $0.key < $1.key }) {
-        print("  • \(name): \(tool.description)".lightBlack)
+        let displayName = name.replacingOccurrences(of: "mcp__", with: "")
+        print("  • \(displayName): \(tool.description)".lightBlack)
       }
-    } else {
-      print("  No MCP tools available. Configure MCP servers to add tools.".yellow)
+    }
+    
+    if !localTools.isEmpty {
+      print("Available Local tools:".cyan)
+      for (name, tool) in localTools.sorted(by: { $0.key < $1.key }) {
+        let displayName = name.replacingOccurrences(of: "local__", with: "")
+        print("  • \(displayName): \(tool.description)".lightBlack)
+      }
+    }
+    
+    if mcpTools.isEmpty && localTools.isEmpty {
+      print("No tools available. Configure MCP servers or local tools to add functionality.".yellow)
     }
   }
   
@@ -229,14 +257,37 @@ class ToolExecutor {
     availableTools = availableTools.filter { !$0.key.hasPrefix("mcp__\(name)__") }
   }
   
+  func registerLocalTool(_ tool: CLITool) {
+    availableTools[tool.name] = tool
+    if verbose {
+      printStatus("   Registered local tool: \(tool.name)".lightBlack)
+    }
+  }
+  
+  func loadLocalTools(from path: String) {
+    do {
+      let tools = try LocalToolsLoader.loadTools(from: path)
+      for tool in tools {
+        registerLocalTool(tool)
+      }
+      if verbose {
+        printStatus("✅ Loaded \(tools.count) local tools from \(path)".green)
+      }
+    } catch {
+      if verbose {
+        printStatus("⚠️  Failed to load local tools from '\(path)': \(error.localizedDescription)".yellow)
+      }
+    }
+  }
+  
   func cleanup() async {
     // Disconnect all MCP servers gracefully
     if let mcpClient = mcpClient {
       await mcpClient.disconnectAll()
     }
     
-    // Clear all MCP tools from available tools
-    availableTools = availableTools.filter { !$0.key.hasPrefix("mcp__") }
+    // Clear all tools from available tools
+    availableTools.removeAll()
   }
   
   deinit {

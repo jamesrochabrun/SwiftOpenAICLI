@@ -42,6 +42,9 @@ struct AgentCommand: AsyncParsableCommand {
   @Option(name: .long, help: "Explicit list of allowed tools (overrides --tools and MCP auto-discovery). Use glob patterns like 'mcp__*' or 'mcp__github__*'")
   var allowedTools: String?
   
+  @Option(name: .long, help: "Path to local tools configuration file (JSON)")
+  var localToolsConfig: String?
+  
   @Flag(name: [.short, .long], help: "Interactive agent mode")
   var interactive = false
   
@@ -85,8 +88,11 @@ struct AgentCommand: AsyncParsableCommand {
     // Determine timeout based on model if not explicitly set
     let effectiveTimeout = timeout ?? getDefaultTimeout(for: model)
     
+    // Resolve local tools config path
+    let resolvedLocalToolsPath = resolveLocalToolsPath(localToolsConfig)
+    
     if interactive {
-      try await runInteractiveMode(mcpConfigs: mcpConfigs, enabledTools: enabledTools)
+      try await runInteractiveMode(mcpConfigs: mcpConfigs, localToolsConfig: resolvedLocalToolsPath, enabledTools: enabledTools)
     } else if let message = message {
       try await OpenAIService.shared.agentChat(
         message: message,
@@ -100,6 +106,7 @@ struct AgentCommand: AsyncParsableCommand {
         reasoning: reasoning.rawValue,
         sessionId: sessionId,
         mcpServers: mcpConfigs,
+        localToolsConfig: resolvedLocalToolsPath,
         showMCPStatus: showMCPStatus,
         timeout: effectiveTimeout,
         showToolEventsVerbose: showToolEventsVerbose,
@@ -159,7 +166,19 @@ struct AgentCommand: AsyncParsableCommand {
     }
   }
   
-  private func runInteractiveMode(mcpConfigs: [MCPServerConfig] = [], enabledTools: Set<String>? = nil) async throws {
+  private func resolveLocalToolsPath(_ path: String?) -> String? {
+    guard let path = path else { return nil }
+    
+    // Expand tilde if present
+    if path.hasPrefix("~") {
+      let homeDirectory = FileManager.default.homeDirectoryForCurrentUser.path
+      return path.replacingOccurrences(of: "~", with: homeDirectory, range: path.startIndex..<path.index(after: path.startIndex))
+    }
+    
+    return path
+  }
+  
+  private func runInteractiveMode(mcpConfigs: [MCPServerConfig] = [], localToolsConfig: String? = nil, enabledTools: Set<String>? = nil) async throws {
     // Check if we're in a proper terminal
 #if os(macOS) || os(Linux)
     guard isatty(STDIN_FILENO) != 0 else {
@@ -178,7 +197,8 @@ struct AgentCommand: AsyncParsableCommand {
     // Create persistent ToolExecutor for the session
     // In interactive mode, always show MCP status and never use stderr
     let toolExecutor = ToolExecutor(
-      mcpServers: mcpConfigs, 
+      mcpServers: mcpConfigs,
+      localToolsConfigPath: localToolsConfig,
       verbose: true, 
       useStderr: false,
       showToolEventsVerbose: showToolEventsVerbose
@@ -194,7 +214,12 @@ struct AgentCommand: AsyncParsableCommand {
     }
     if !mcpConfigs.isEmpty {
       print("MCP servers: \(mcpConfigs.map { $0.name }.joined(separator: ", "))".lightBlack)
-      print("🚀 MCP servers initialized once for this session".green)
+    }
+    if let localToolsConfig = localToolsConfig {
+      print("Local tools config: \(localToolsConfig)".lightBlack)
+    }
+    if !mcpConfigs.isEmpty || localToolsConfig != nil {
+      print("🚀 Tools initialized once for this session".green)
     }
     print("Tool events: \(showToolEventsVerbose ? "VERBOSE" : "COMPACT")".lightBlack)
     let contextWindow = TokenCalculator.getContextWindow(for: model)

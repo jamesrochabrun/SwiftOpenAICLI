@@ -9,7 +9,9 @@ final class MCPClientTests: XCTestCase {
     func testMCPServerConfig() {
         let config = MCPServerConfig(
             name: "test-server",
+            transport: "stdio",
             command: "echo",
+            url: nil,
             args: ["test"],
             environment: ["KEY": "VALUE"]
         )
@@ -23,7 +25,9 @@ final class MCPClientTests: XCTestCase {
     func testMCPServerConfigWithoutEnvironment() {
         let config = MCPServerConfig(
             name: "test-server",
+            transport: "stdio",
             command: "node",
+            url: nil,
             args: ["server.js"],
             environment: nil
         )

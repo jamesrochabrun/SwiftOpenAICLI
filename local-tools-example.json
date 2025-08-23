@@ -1,0 +1,72 @@
+{
+  "tools": [
+    {
+      "name": "search_files",
+      "description": "Search for text patterns in files using grep",
+      "command": "grep -r '{{pattern}}' {{directory}}",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "pattern": {
+            "type": "string",
+            "description": "The text pattern to search for"
+          },
+          "directory": {
+            "type": "string",
+            "description": "The directory to search in",
+            "default": "."
+          }
+        },
+        "required": ["pattern"]
+      }
+    },
+    {
+      "name": "list_files",
+      "description": "List files in a directory with details",
+      "command": "ls -la {{path}}",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "The path to list files from",
+            "default": "."
+          }
+        }
+      }
+    },
+    {
+      "name": "word_count",
+      "description": "Count lines, words, and characters in a file",
+      "command": "wc {{file}}",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "string",
+            "description": "The file to analyze"
+          }
+        },
+        "required": ["file"]
+      }
+    },
+    {
+      "name": "current_datetime",
+      "description": "Get the current date and time",
+      "command": "date",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "system_info",
+      "description": "Get system information",
+      "command": "uname -a",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    }
+  ]
+}
