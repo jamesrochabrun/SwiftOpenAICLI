@@ -146,7 +146,7 @@ struct OpenAICLI: AsyncParsableCommand {
     For more information and updates, visit:
     https://github.com/jamesrochabrun/SwiftOpenAICLI
     """,
-    version: "1.4.4",
+    version: "1.5.0",
     subcommands: [
       ChatCommand.self,
       AgentCommand.self,
