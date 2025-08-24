@@ -1,0 +1,53 @@
+#!/usr/bin/env node
+
+const { spawn } = require('child_process');
+const path = require('path');
+const fs = require('fs');
+
+// Determine the platform and architecture
+const platform = process.platform;
+const arch = process.arch;
+
+// Map platform and arch to binary path
+let binaryName;
+if (platform === 'darwin') {
+  if (arch === 'arm64') {
+    binaryName = 'darwin-arm64/isa';
+  } else if (arch === 'x64') {
+    binaryName = 'darwin-x64/isa';
+  }
+} else if (platform === 'linux' && arch === 'x64') {
+  binaryName = 'linux-x64/isa';
+}
+
+if (!binaryName) {
+  console.error(`Unsupported platform: ${platform} ${arch}`);
+  process.exit(1);
+}
+
+const binaryPath = path.join(__dirname, '..', 'binaries', binaryName);
+
+// Check if binary exists
+if (!fs.existsSync(binaryPath)) {
+  console.error(`Binary not found: ${binaryPath}`);
+  console.error('Please run npm install again or build from source.');
+  process.exit(1);
+}
+
+// Make sure binary is executable
+fs.chmodSync(binaryPath, '755');
+
+// Spawn the binary with all arguments
+const child = spawn(binaryPath, process.argv.slice(2), {
+  stdio: 'inherit',
+  env: process.env
+});
+
+child.on('error', (err) => {
+  console.error('Failed to start ISA:', err);
+  process.exit(1);
+});
+
+child.on('exit', (code) => {
+  process.exit(code || 0);
+});

@@ -1,0 +1,130 @@
+{
+  "tools": [
+    {
+      "name": "enhanced_read",
+      "description": "Read file contents with line numbers and advanced options",
+      "commands": [
+        {
+          "name": "read",
+          "template": "cat -n '{{file_path}}' | head -{{limit:-9999}} | tail -n +{{offset:-1}}",
+          "parameters": {
+            "file_path": {
+              "type": "string",
+              "required": true,
+              "description": "Path to the file to read"
+            },
+            "limit": {
+              "type": "integer",
+              "required": false,
+              "description": "Maximum number of lines to read"
+            },
+            "offset": {
+              "type": "integer",
+              "required": false,
+              "description": "Line number to start from"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "multi_edit",
+      "description": "Make multiple edits to a file in one operation",
+      "commands": [
+        {
+          "name": "multi_edit",
+          "template": "echo 'Multiple edits would be applied to {{file_path}}'",
+          "parameters": {
+            "file_path": {
+              "type": "string",
+              "required": true,
+              "description": "Path to the file to edit"
+            },
+            "edits": {
+              "type": "array",
+              "required": true,
+              "description": "Array of edit operations"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "advanced_grep",
+      "description": "Advanced pattern search using ripgrep",
+      "commands": [
+        {
+          "name": "grep",
+          "template": "rg {{flags}} '{{pattern}}' {{path:-'.'}}",
+          "parameters": {
+            "pattern": {
+              "type": "string",
+              "required": true,
+              "description": "Search pattern (regex)"
+            },
+            "path": {
+              "type": "string",
+              "required": false,
+              "description": "Path to search in"
+            },
+            "flags": {
+              "type": "string",
+              "required": false,
+              "description": "Additional ripgrep flags"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "glob_search",
+      "description": "Find files matching glob patterns",
+      "commands": [
+        {
+          "name": "glob",
+          "template": "find {{path:-'.'}} -name '{{pattern}}' -type f 2>/dev/null | sort",
+          "parameters": {
+            "pattern": {
+              "type": "string",
+              "required": true,
+              "description": "Glob pattern to match"
+            },
+            "path": {
+              "type": "string",
+              "required": false,
+              "description": "Directory to search in"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "safe_bash",
+      "description": "Execute bash commands with safety checks",
+      "commands": [
+        {
+          "name": "bash",
+          "template": "bash -c '{{command}}'",
+          "parameters": {
+            "command": {
+              "type": "string",
+              "required": true,
+              "description": "Bash command to execute"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "project_context",
+      "description": "Read project context files (isa.md, CLAUDE.md)",
+      "commands": [
+        {
+          "name": "read_context",
+          "template": "for f in isa.md .isa/context.md CLAUDE.md .claude/CLAUDE.md; do [ -f \"$f\" ] && echo \"=== $f ===\" && cat \"$f\" && break; done || echo 'No context file found'",
+          "parameters": {}
+        }
+      ]
+    }
+  ]
+}

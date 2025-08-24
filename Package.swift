@@ -12,6 +12,10 @@ let package = Package(
         .executable(
             name: "swiftopenai",
             targets: ["SwiftOpenAICLI"]
+        ),
+        .library(
+            name: "SwiftOpenAICLICore",
+            targets: ["SwiftOpenAICLICore"]
         )
     ],
     dependencies: [
@@ -26,17 +30,25 @@ let package = Package(
         .executableTarget(
             name: "SwiftOpenAICLI",
             dependencies: [
+                "SwiftOpenAICLICore"
+            ],
+            path: "Sources/SwiftOpenAICLI"
+        ),
+        .target(
+            name: "SwiftOpenAICLICore",
+            dependencies: [
                 .product(name: "SwiftOpenAI", package: "SwiftOpenAI"),
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
                 .product(name: "Rainbow", package: "Rainbow"),
                 .product(name: "SwiftyTextTable", package: "SwiftyTextTable"),
                 .product(name: "Markdown", package: "swift-markdown"),
                 .product(name: "MCP", package: "swift-sdk")
-            ]
+            ],
+            path: "Sources/SwiftOpenAICLICore"
         ),
         .testTarget(
             name: "SwiftOpenAICLITests",
-            dependencies: ["SwiftOpenAICLI"]
+            dependencies: ["SwiftOpenAICLICore"]
         )
     ]
 )

@@ -1,0 +1,37 @@
+name: git_tools
+description: Git version control operations
+commands:
+  - name: status
+    description: Show git status
+    command: git status --porcelain
+    outputParser: plain
+    
+  - name: diff
+    description: Show git diff
+    command: git diff
+    outputParser: plain
+    
+  - name: log
+    description: Show git log
+    parameters:
+      - name: limit
+        type: integer
+        required: false
+        description: Number of commits to show
+    command: git log --oneline -n {limit:-10}
+    outputParser: plain
+    
+  - name: branch_list
+    description: List all branches
+    command: git branch -a
+    outputParser: plain
+    
+  - name: commit
+    description: Create a git commit
+    parameters:
+      - name: message
+        type: string
+        required: true
+        description: Commit message
+    command: git commit -m "{message}"
+    outputParser: plain

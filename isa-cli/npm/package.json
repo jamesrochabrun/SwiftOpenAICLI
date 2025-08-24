@@ -1,0 +1,50 @@
+{
+  "name": "isa-cli",
+  "version": "0.1.0",
+  "description": "Intelligent Swift Agent - A Claude Code-inspired AI agent for the command line",
+  "keywords": [
+    "ai",
+    "agent",
+    "cli",
+    "openai",
+    "gpt",
+    "automation",
+    "tools",
+    "coding-assistant"
+  ],
+  "homepage": "https://github.com/jamesrochabrun/ISA",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jamesrochabrun/ISA.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jamesrochabrun/ISA/issues"
+  },
+  "author": "James Rochabrun",
+  "license": "MIT",
+  "bin": {
+    "isa": "./bin/isa"
+  },
+  "scripts": {
+    "postinstall": "node lib/install.js",
+    "preuninstall": "node lib/uninstall.js"
+  },
+  "files": [
+    "bin/",
+    "lib/",
+    "binaries/",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "os": [
+    "darwin",
+    "linux"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ]
+}
