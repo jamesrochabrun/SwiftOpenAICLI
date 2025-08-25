@@ -29,14 +29,14 @@ public class ISAReadTool: CLITool {
         ),
         "offset": JSONSchema(
           type: .number,
-          description: "The line number to start reading from. Only provide if the file is too large to read at once"
+          description: "The line number to start reading from (1-based). Only provide if the file is too large to read at once"
         ),
         "limit": JSONSchema(
           type: .number,
           description: "The number of lines to read. Only provide if the file is too large to read at once."
         )
       ],
-      required: ["file_path", "offset", "limit"]
+      required: ["file_path"]  // Only file_path is required, offset and limit are optional
     )
   }
   
@@ -81,9 +81,9 @@ public class ISAReadTool: CLITool {
     let offset = args.offset ?? 1
     let limit = args.limit ?? 2000
     
-    // Validate offset
-    guard offset > 0 else {
-      throw ISAToolError.invalidArguments("Offset must be greater than 0")
+    // Validate offset (must be >= 1 since we use 1-based line numbers)
+    guard offset >= 1 else {
+      throw ISAToolError.invalidArguments("Offset must be greater than or equal to 1 (line numbers start at 1)")
     }
     
     // Calculate range
