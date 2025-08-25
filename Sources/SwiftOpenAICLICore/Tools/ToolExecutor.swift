@@ -121,10 +121,21 @@ public class ToolExecutor {
       print("   Arguments: \(truncateForDisplay(arguments))".lightBlack)
     }
     
-    let result = try await tool.execute(arguments: arguments)
-    
-    if outputFormat == "plain" {
-      print("   Result: \(truncateForDisplay(result))".lightBlack)
+    let result: String
+    do {
+      result = try await tool.execute(arguments: arguments)
+      
+      if outputFormat == "plain" {
+        print("   Result: \(truncateForDisplay(result))".lightBlack)
+      }
+    } catch {
+      // Return error as tool response so AI can handle it gracefully
+      result = "Error: \(error.localizedDescription)"
+      
+      // Show error distinctly in output
+      if outputFormat == "plain" {
+        print("   ❌ Error: \(error.localizedDescription)".red)
+      }
     }
     
     return result
