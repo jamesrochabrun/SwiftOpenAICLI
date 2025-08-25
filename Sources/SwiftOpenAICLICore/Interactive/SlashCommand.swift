@@ -44,6 +44,7 @@ public struct CommandContext {
   public var currentModel: String
   public var temperature: Double
   public var maxTokens: Int?
+  public var maxToolCalls: Int?
   public let isAgentMode: Bool
   public var enabledTools: Set<String>?
   
@@ -52,6 +53,7 @@ public struct CommandContext {
     currentModel: String,
     temperature: Double = 1.0,
     maxTokens: Int? = nil,
+    maxToolCalls: Int? = nil,
     isAgentMode: Bool = false,
     enabledTools: Set<String>? = nil
   ) {
@@ -59,6 +61,7 @@ public struct CommandContext {
     self.currentModel = currentModel
     self.temperature = temperature
     self.maxTokens = maxTokens
+    self.maxToolCalls = maxToolCalls
     self.isAgentMode = isAgentMode
     self.enabledTools = enabledTools
   }

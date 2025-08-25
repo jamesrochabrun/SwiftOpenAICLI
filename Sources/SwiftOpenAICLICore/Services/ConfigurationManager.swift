@@ -49,6 +49,8 @@ public class ConfigurationManager {
             return String(configuration.temperature)
         case "max-tokens":
             return configuration.maxTokens.map { String($0) }
+        case "max-tool-calls":
+            return configuration.maxToolCalls.map { String($0) }
         case "provider":
             return configuration.provider
         case "base-url":
@@ -81,6 +83,11 @@ public class ConfigurationManager {
                 throw ConfigurationError.invalidValue(key: key, value: value)
             }
             configuration.maxTokens = tokens
+        case "max-tool-calls":
+            guard let calls = Int(value), calls > 0 else {
+                throw ConfigurationError.invalidValue(key: key, value: value)
+            }
+            configuration.maxToolCalls = calls
         case "provider":
             configuration.provider = value
         case "base-url":
@@ -103,6 +110,9 @@ public class ConfigurationManager {
         items.append(("temperature", String(configuration.temperature)))
         if let maxTokens = configuration.maxTokens {
             items.append(("max-tokens", String(maxTokens)))
+        }
+        if let maxToolCalls = configuration.maxToolCalls {
+            items.append(("max-tool-calls", String(maxToolCalls)))
         }
         if let provider = configuration.provider {
             items.append(("provider", provider))

@@ -53,6 +53,12 @@ public struct ConfigSlashCommand: SlashCommand {
       print("• " + "max-tokens:".green + "     (default)".lightBlack)
     }
     
+    if let maxToolCallsStr = config.get("max-tool-calls"), let maxToolCalls = Int(maxToolCallsStr) {
+      print("• " + "max-tool-calls:".green + " \(maxToolCalls)")
+    } else {
+      print("• " + "max-tool-calls:".green + " (default)".lightBlack)
+    }
+    
     print("• " + "output-format:".green + "  \(config.get("output-format") ?? "plain")")
     
     if let provider = config.provider {

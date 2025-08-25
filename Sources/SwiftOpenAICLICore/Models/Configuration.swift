@@ -6,6 +6,7 @@ public struct Configuration: Codable {
     public var outputFormat: OutputFormat = .plain
     public var temperature: Double = 1.0
     public var maxTokens: Int?
+    public var maxToolCalls: Int?  // Maximum tool calls allowed per session
     
     // Provider configuration
     public var provider: String?

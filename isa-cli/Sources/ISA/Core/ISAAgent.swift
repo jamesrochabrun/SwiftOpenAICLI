@@ -35,6 +35,9 @@ class ISAAgent {
     timeout: Int?,
     maxToolCalls: Int
   ) async throws {
+    // Get effective maxToolCalls (parameter takes precedence over config)
+    let effectiveMaxToolCalls = maxToolCalls != 20 ? maxToolCalls : 
+      (ConfigurationManager.shared.getConfiguration().maxToolCalls ?? 20)
     
     // If plan mode, generate and confirm plan first
     if planMode {
@@ -78,7 +81,7 @@ class ISAAgent {
       verbose: getVerbosityLevel(),
       reasoning: getReasoningLevel(),
       sessionId: sessionId,
-      maxToolCalls: maxToolCalls
+      maxToolCalls: effectiveMaxToolCalls
     )
     
     // Show final todos if enabled
@@ -97,6 +100,9 @@ class ISAAgent {
     timeout: Int?,
     maxToolCalls: Int
   ) async throws {
+    // Get effective maxToolCalls (parameter takes precedence over config)
+    let effectiveMaxToolCalls = maxToolCalls != 20 ? maxToolCalls : 
+      (ConfigurationManager.shared.getConfiguration().maxToolCalls ?? 20)
     
     TerminalUI.showInteractiveHelp()
     
@@ -121,6 +127,7 @@ class ISAAgent {
       currentModel: model,
       temperature: temperature,
       maxTokens: nil,
+      maxToolCalls: effectiveMaxToolCalls,
       isAgentMode: true,
       enabledTools: parseAllowedTools(allowedTools)
     )
@@ -129,6 +136,7 @@ class ISAAgent {
     var currentModel = model
     var currentTemperature = temperature
     var currentMaxTokens: Int? = nil
+    var currentMaxToolCalls = effectiveMaxToolCalls
     
     while true {
       // Use input processor for proper prompt handling
@@ -185,6 +193,7 @@ class ISAAgent {
           currentModel = commandContext.currentModel
           currentTemperature = commandContext.temperature
           currentMaxTokens = commandContext.maxTokens
+          currentMaxToolCalls = commandContext.maxToolCalls ?? effectiveMaxToolCalls
         } catch {
           print("\(error.localizedDescription)".red)
         }
@@ -221,7 +230,7 @@ class ISAAgent {
             verbose: getVerbosityLevel(),
             reasoning: getReasoningLevel(),
             sessionId: currentSessionId,
-            maxToolCalls: maxToolCalls
+            maxToolCalls: currentMaxToolCalls  // Use potentially updated max tool calls
           )
           
           if showTodos && !todoList.todos.isEmpty {

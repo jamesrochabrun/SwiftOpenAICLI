@@ -96,8 +96,18 @@ public struct AgentCommand: AsyncParsableCommand {
     // Resolve local tools config path
     let resolvedLocalToolsPath = resolveLocalToolsPath(localToolsConfig)
     
+    // Get maxToolCalls from config if not provided via CLI (CLI takes precedence)
+    let effectiveMaxToolCalls: Int
+    if maxToolCalls != 10 {  // Non-default value means it was set via CLI
+      effectiveMaxToolCalls = maxToolCalls
+    } else if let configMaxToolCalls = ConfigurationManager.shared.getConfiguration().maxToolCalls {
+      effectiveMaxToolCalls = configMaxToolCalls
+    } else {
+      effectiveMaxToolCalls = 10  // Default value
+    }
+    
     if interactive {
-      try await runInteractiveMode(mcpConfigs: mcpConfigs, localToolsConfig: resolvedLocalToolsPath, enabledTools: enabledTools)
+      try await runInteractiveMode(mcpConfigs: mcpConfigs, localToolsConfig: resolvedLocalToolsPath, enabledTools: enabledTools, effectiveMaxToolCalls: effectiveMaxToolCalls)
     } else if let message = message {
       try await OpenAIService.shared.agentChat(
         message: message,
@@ -115,7 +125,7 @@ public struct AgentCommand: AsyncParsableCommand {
         showMCPStatus: showMCPStatus,
         timeout: effectiveTimeout,
         showToolEventsVerbose: showToolEventsVerbose,
-        maxToolCalls: maxToolCalls
+        maxToolCalls: effectiveMaxToolCalls
       )
     } else {
       print("Please provide a message or use --interactive flag".red)
@@ -183,7 +193,7 @@ public struct AgentCommand: AsyncParsableCommand {
     return path
   }
   
-  private func runInteractiveMode(mcpConfigs: [MCPServerConfig] = [], localToolsConfig: String? = nil, enabledTools: Set<String>? = nil) async throws {
+  private func runInteractiveMode(mcpConfigs: [MCPServerConfig] = [], localToolsConfig: String? = nil, enabledTools: Set<String>? = nil, effectiveMaxToolCalls: Int = 10) async throws {
     // Check if we're in a proper terminal
 #if canImport(Darwin) || canImport(Glibc)
     guard isatty(STDIN_FILENO) != 0 else {
@@ -246,13 +256,15 @@ public struct AgentCommand: AsyncParsableCommand {
       sessionId: currentSessionId,
       currentModel: model,
       temperature: temperature,
-      maxTokens: maxTokens
+      maxTokens: maxTokens,
+      maxToolCalls: effectiveMaxToolCalls
     )
     
     // Keep track of current settings that might be changed by slash commands
     var currentModel = model
     var currentTemperature = temperature
     var currentMaxTokens = maxTokens
+    var currentMaxToolCalls = effectiveMaxToolCalls
     
     // Set up signal handler for graceful exit
     // Note: Can't capture toolExecutor in signal handler, so cleanup happens in normal exit paths
@@ -312,10 +324,11 @@ public struct AgentCommand: AsyncParsableCommand {
             print("Goodbye!".yellow)
             break
           }
-          // Update local variables if model changed
+          // Update local variables if settings changed
           currentModel = commandContext.currentModel
           currentTemperature = commandContext.temperature
           currentMaxTokens = commandContext.maxTokens
+          currentMaxToolCalls = commandContext.maxToolCalls ?? effectiveMaxToolCalls
         } catch {
           print("\(error.localizedDescription)".red)
         }
@@ -344,7 +357,7 @@ public struct AgentCommand: AsyncParsableCommand {
             verbose: modelVerbosity.rawValue,
             reasoning: reasoning.rawValue,
             sessionId: currentSessionId,
-            maxToolCalls: maxToolCalls
+            maxToolCalls: currentMaxToolCalls
           )
           print()
         } catch {
