@@ -1,5 +1,10 @@
 import Foundation
 import Rainbow
+#if canImport(Darwin)
+import Darwin
+#elseif canImport(Glibc)
+import Glibc
+#endif
 
 /// Helper for managing output in different formats
 public struct OutputHelper {

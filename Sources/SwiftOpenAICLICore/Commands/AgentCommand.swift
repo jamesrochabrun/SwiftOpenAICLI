@@ -2,8 +2,10 @@ import ArgumentParser
 import Foundation
 import SwiftOpenAI
 import Rainbow
-#if os(macOS) || os(Linux)
+#if canImport(Darwin)
 import Darwin
+#elseif canImport(Glibc)
+import Glibc
 #endif
 
 public struct AgentCommand: AsyncParsableCommand {
@@ -183,7 +185,7 @@ public struct AgentCommand: AsyncParsableCommand {
   
   private func runInteractiveMode(mcpConfigs: [MCPServerConfig] = [], localToolsConfig: String? = nil, enabledTools: Set<String>? = nil) async throws {
     // Check if we're in a proper terminal
-#if os(macOS) || os(Linux)
+#if canImport(Darwin) || canImport(Glibc)
     guard isatty(STDIN_FILENO) != 0 else {
       print("Error: Interactive mode requires a terminal environment".red)
       print("For non-interactive use, provide a message directly:".yellow)
@@ -239,7 +241,11 @@ public struct AgentCommand: AsyncParsableCommand {
     // Note: Can't capture toolExecutor in signal handler, so cleanup happens in normal exit paths
     signal(SIGINT) { _ in
       print("\n\nInterrupted. Goodbye!".yellow)
+      #if canImport(Darwin)
       Darwin.exit(0)
+      #elseif canImport(Glibc)
+      Glibc.exit(0)
+      #endif
     }
     
     while true {

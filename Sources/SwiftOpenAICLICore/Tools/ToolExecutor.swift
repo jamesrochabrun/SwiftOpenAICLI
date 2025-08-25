@@ -141,23 +141,32 @@ public class ToolExecutor {
     
     // Try to parse as JSON for smarter truncation
     if let data = text.data(using: .utf8),
-       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+       let json = try? JSONSerialization.jsonObject(with: data) {
       
-      // Special handling for search results
-      if let searchResults = json["searchResults"] as? [[String: Any]] {
-        let count = searchResults.count
-        let preview = searchResults.prefix(3).compactMap { item -> String? in
-          if let name = (item["demandStayListing"] as? [String: Any])?["description"] as? [String: Any],
-             let title = (name["name"] as? [String: Any])?["localizedStringWithTranslationPreference"] as? String {
-            return "• \(title)"
-          }
-          return nil
-        }.joined(separator: "\n  ")
-        
+      // Handle arrays of results generically
+      if let jsonArray = json as? [[String: Any]] {
+        let count = jsonArray.count
         if count > 3 {
-          return "Found \(count) results (showing 3):\n  \(preview)\n  ... [\(count - 3) more results]"
+          return "Array with \(count) items (truncated for display)"
         } else {
-          return "Found \(count) results:\n  \(preview)"
+          return "Array with \(count) items"
+        }
+      }
+      
+      // Handle objects with common patterns
+      if let jsonDict = json as? [String: Any] {
+        // Look for common result patterns
+        for key in ["results", "items", "data", "searchResults", "matches", "records"] {
+          if let results = jsonDict[key] as? [Any] {
+            let count = results.count
+            return "\(key): \(count) item\(count == 1 ? "" : "s")"
+          }
+        }
+        
+        // For other JSON objects, show key count
+        let keyCount = jsonDict.keys.count
+        if text.count > maxLength {
+          return "JSON object with \(keyCount) keys (truncated, \(text.count) chars total)"
         }
       }
       

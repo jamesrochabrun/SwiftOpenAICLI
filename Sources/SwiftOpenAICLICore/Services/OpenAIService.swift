@@ -1,6 +1,11 @@
 import Foundation
 import SwiftOpenAI
 import Rainbow
+#if canImport(Darwin)
+import Darwin
+#elseif canImport(Glibc)
+import Glibc
+#endif
 
 public final class OpenAIService {
   
@@ -62,7 +67,7 @@ public final class OpenAIService {
     }
   }
   
-  func chat(message: String, model: String, system: String? = nil, temperature: Double = 1.0, maxTokens: Int? = nil, stream: Bool = true, plain: Bool = false, verbose: String = "medium", reasoning: String = "medium") async throws {
+  func chat(message: String, model: String, system: String? = nil, temperature: Double = 1.0, maxTokens: Int? = nil, stream: Bool = true, plain: Bool = false, verbose: String = "medium", reasoning: String = "medium", timeout: Int = 60) async throws {
     let openAI = try getService()
     
     // Normalize the model name
@@ -121,8 +126,8 @@ public final class OpenAIService {
         }
         
         group.addTask {
-          // Timeout task - increase timeout for GPT-5 models
-          let timeoutSeconds = normalizedModel.lowercased().contains("gpt-5") ? 180 : 60
+          // Timeout task - use provided timeout or default based on model
+          let timeoutSeconds = timeout > 0 ? timeout : (normalizedModel.lowercased().contains("gpt-5") ? 180 : 60)
           try await Task.sleep(nanoseconds: UInt64(timeoutSeconds * 1_000_000_000))
           throw OpenAIServiceError.timeout(seconds: timeoutSeconds)
         }
@@ -132,7 +137,7 @@ public final class OpenAIService {
           group.cancelAll()
           return result
         }
-        throw OpenAIServiceError.timeout(seconds: 60)
+        throw OpenAIServiceError.timeout(seconds: timeout)
       }
       
       // Clear the loading indicator
@@ -212,11 +217,12 @@ public final class OpenAIService {
       verbose: verbose,
       reasoning: reasoning,
       sessionId: sessionId,
+      timeout: timeout,
       maxToolCalls: maxToolCalls
     )
   }
   
-  public func agentChatWithExecutor(message: String, model: String, toolExecutor: ToolExecutor, system: String? = nil, temperature: Double = 1.0, maxTokens: Int? = nil, outputFormat: String = "plain", enabledTools: Set<String>?, verbose: String = "medium", reasoning: String = "medium", sessionId: String? = nil, maxToolCalls: Int = 10) async throws {
+  public func agentChatWithExecutor(message: String, model: String, toolExecutor: ToolExecutor, system: String? = nil, temperature: Double = 1.0, maxTokens: Int? = nil, outputFormat: String = "plain", enabledTools: Set<String>?, verbose: String = "medium", reasoning: String = "medium", sessionId: String? = nil, timeout: Int = 60, maxToolCalls: Int = 10) async throws {
     let openAI = try getService()
     let outputHelper = OutputHelper(outputFormat: outputFormat)
     
@@ -347,8 +353,8 @@ public final class OpenAIService {
         }
         
         group.addTask {
-          // Timeout task - increase timeout for GPT-5 models
-          let timeoutSeconds = normalizedModel.lowercased().contains("gpt-5") ? 180 : 60
+          // Timeout task - use provided timeout or default based on model
+          let timeoutSeconds = timeout > 0 ? timeout : (normalizedModel.lowercased().contains("gpt-5") ? 180 : 60)
           try await Task.sleep(nanoseconds: UInt64(timeoutSeconds * 1_000_000_000))
           throw OpenAIServiceError.timeout(seconds: timeoutSeconds)
         }
@@ -358,7 +364,7 @@ public final class OpenAIService {
           group.cancelAll()
           return result
         }
-        throw OpenAIServiceError.timeout(seconds: 60)
+        throw OpenAIServiceError.timeout(seconds: timeout)
       }
       
       if outputFormat == "plain" || outputFormat == "interactive-stream" {
