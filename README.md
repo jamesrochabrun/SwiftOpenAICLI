@@ -317,6 +317,378 @@ swiftopenai agent "Query the database for system metrics and calculate uptime pe
   --mcp-servers postgres
 ```
 
+### ISA - Intelligent Software Assistant 🤖
+
+ISA is a Claude Code-inspired AI agent built on top of SwiftOpenAICLI, designed specifically for developers. It combines the power of the SwiftOpenAICLI agent with enhanced prompting, task management, and a developer-focused interface.
+
+#### What is ISA?
+
+ISA (Intelligent Software Assistant) is a specialized command-line AI agent that:
+- **Defaults to interactive mode** - Just type `isa` to start chatting
+- **Uses GPT-5 by default** - Optimized for complex reasoning and coding tasks
+- **Includes Claude Code-inspired enhancements** - Better task planning and execution
+- **Supports context files** - Use `isa.md` files for project-specific instructions
+- **Features visual task management** - Built-in todo lists with progress tracking
+- **Provides a beautiful terminal UI** - ASCII art branding and colored output
+
+#### Installation
+
+##### Using npm (Recommended)
+
+The easiest way to install ISA is via npm:
+
+```bash
+npm install -g isa-swift
+```
+
+That's it! The `isa` command is now available globally.
+
+##### Build from Source
+
+1. Clone the SwiftOpenAICLI repository (if not already done):
+```bash
+git clone https://github.com/jamesrochabrun/SwiftOpenAICLI.git
+cd SwiftOpenAICLI
+```
+
+2. Build ISA:
+```bash
+cd isa-cli
+swift build -c release
+```
+
+3. Install ISA globally:
+```bash
+# Copy the binary to /usr/local/bin
+sudo cp .build/release/ISA /usr/local/bin/isa
+
+# Or create a symlink (recommended for development)
+sudo ln -sf $(pwd)/.build/release/ISA /usr/local/bin/isa
+```
+
+4. Verify installation:
+```bash
+isa --version
+# ISA version: 1.0.0
+```
+
+##### Alternative: Run without Installing
+
+You can run ISA directly from the build directory:
+```bash
+cd isa-cli
+swift run ISA
+# Or for release performance:
+swift build -c release && ./.build/release/ISA
+```
+
+##### Update ISA
+
+To update ISA to the latest version:
+```bash
+cd SwiftOpenAICLI/isa-cli
+git pull
+swift build -c release
+# If installed globally, copy the new binary
+sudo cp .build/release/ISA /usr/local/bin/isa
+```
+
+#### Usage
+
+##### Quick Start
+
+```bash
+# Start interactive mode (default behavior)
+isa
+
+# Send a single message
+isa "Help me understand this codebase"
+
+# Use with a specific model
+isa "Refactor this function" --model gpt-4o
+
+# Enable plan mode for complex tasks
+isa "Build a REST API with authentication" --plan-mode
+
+# Show todo list in real-time
+isa "Implement user authentication" --show-todos
+
+# With MCP servers
+isa "Analyze my GitHub repos" --mcp-servers github --allowed-tools "mcp__github__*"
+```
+
+##### Interactive Mode
+
+ISA defaults to interactive mode when run without arguments:
+
+```bash
+$ isa
+
+╦╔═╗╔═╗
+║╚═╗╠═╣
+╩╚═╝╩ ╩
+Intelligent Software Assistant
+
+🚀 ISA Interactive Mode (gpt-5)
+Type 'exit' to quit, 'clear' to reset, or use slash commands (/)
+
+You: Hello! Can you help me understand this Python project?
+Assistant: I'll help you understand your Python project! Let me start by exploring the structure...
+
+You: /help
+📚 Available Slash Commands
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+/help                Show available commands
+/clear               Clear conversation history  
+/models              List available models
+/config              Show current configuration
+
+You: exit
+Goodbye!
+```
+
+#### Command-Line Options
+
+ISA supports all SwiftOpenAICLI agent options plus additional features:
+
+##### Basic Options
+- `-m, --model <model>` - AI model to use (default: gpt-5)
+- `-i, --interactive` - Force interactive mode (default when no message provided)
+- `-v, --verbose` - Enable verbose output
+- `--help` - Show help information
+- `--version` - Show ISA version
+
+##### Advanced Options
+- `--system <prompt>` - Custom system prompt (enhanced with ISA context)
+- `--temperature <0.0-2.0>` - Control randomness (default: 1.0)
+- `--max-tokens <number>` - Maximum tokens to generate
+- `--output-format <format>` - Output format: plain, json, stream-json (default: plain)
+- `--session-id <id>` - Resume a previous conversation
+- `--timeout <seconds>` - Request timeout
+- `--max-tool-calls <number>` - Maximum tool calls allowed (default: 20)
+
+##### ISA-Specific Options
+- `--plan-mode` - Show execution plan before running (great for complex tasks)
+- `--show-todos` - Display real-time todo list updates
+- `--show-tool-events` - Show detailed tool execution events
+
+##### MCP and Tools Options
+- `--mcp-servers <servers>` - Enable MCP servers (comma-separated)
+- `--allowed-tools <patterns>` - Tool access patterns (e.g., "mcp__*", "local__*")
+- `--local-tools-config <path>` - Path to custom tools configuration
+
+#### Slash Commands
+
+ISA supports interactive slash commands for quick actions:
+
+##### Available Commands
+- `/help` - Show all available commands
+- `/help <command>` - Get detailed help for a specific command
+- `/clear` - Clear conversation history and reset context
+- `/models` - List available AI models
+- `/config` - Display current configuration
+- `/exit` or `/quit` - Exit interactive mode
+
+##### Using Slash Commands
+
+```bash
+You: /models
+📊 Available Models
+━━━━━━━━━━━━━━━━━━━━━━
+• gpt-5 (default)
+• gpt-5-mini
+• gpt-5-nano
+• gpt-4o
+• gpt-4o-mini
+• gpt-3.5-turbo
+
+You: /config
+🔧 Current Configuration
+━━━━━━━━━━━━━━━━━━━━━━━━
+• Model: gpt-5
+• Temperature: 1.0
+• API Key: sk-...configured
+• MCP Servers: github, filesystem
+```
+
+#### Context Files (isa.md)
+
+ISA can read project-specific context from `isa.md` files in your project root:
+
+```markdown
+# Project: My React App
+
+## Conventions
+- Use TypeScript with strict mode
+- Follow ESLint and Prettier rules
+- Components go in src/components/
+- Use React hooks, no class components
+
+## Architecture
+- State management: Redux Toolkit
+- Styling: Tailwind CSS
+- Testing: Jest and React Testing Library
+
+## Important Files
+- src/App.tsx - Main application
+- src/store/ - Redux store configuration
+- src/api/ - API client code
+```
+
+When ISA finds an `isa.md` file, it automatically incorporates this context into its understanding of your project.
+
+#### Real-World Examples
+
+##### Code Refactoring Session
+```bash
+$ isa
+You: I need to refactor the user authentication module to use JWT tokens
+Assistant: I'll help you refactor the authentication module to use JWT tokens. Let me start by examining your current authentication setup.
+
+[Analyzing project structure...]
+✓ Found authentication module in src/auth/
+✓ Current implementation uses session-based auth
+✓ Identified 5 files that need updates
+
+📋 Todo List:
+1. ✅ Analyze current authentication implementation
+2. 🔄 Install JWT dependencies
+3. ⏳ Create JWT service module
+4. ⏳ Update login endpoint
+5. ⏳ Update middleware for token validation
+
+Let me start implementing these changes...
+```
+
+##### Project Analysis with Plan Mode
+```bash
+$ isa "Analyze this React project and suggest improvements" --plan-mode
+
+📝 Execution Plan:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Scan project structure and dependencies
+2. Analyze component architecture
+3. Check for performance issues
+4. Review code patterns and conventions
+5. Generate improvement recommendations
+
+Proceed with this plan? (y/n): y
+
+[Executing plan...]
+```
+
+##### Using with MCP Servers
+```bash
+# GitHub integration
+$ isa "Review my recent PRs and suggest which ones need attention" \
+  --mcp-servers github \
+  --allowed-tools "mcp__github__*"
+
+# File system operations
+$ isa "Help me organize this project's file structure" \
+  --mcp-servers filesystem \
+  --allowed-tools "mcp__filesystem__*"
+
+# Multiple servers
+$ isa --interactive \
+  --mcp-servers github,filesystem,postgres \
+  --allowed-tools "mcp__*"
+You: Check if the database schema matches the TypeScript types in src/types/
+```
+
+##### Complex Task with Todo Tracking
+```bash
+$ isa "Create a new REST API endpoint for user profiles" --show-todos
+
+📋 Task Management:
+━━━━━━━━━━━━━━━━━━━━━
+[ ] Create route handler
+[ ] Add validation schema  
+[ ] Write database queries
+[ ] Add tests
+[ ] Update API documentation
+
+[Working on: Create route handler]
+✓ Created src/routes/profiles.ts
+[Working on: Add validation schema]
+✓ Added Zod schema for profile validation
+...
+```
+
+#### Advanced Features
+
+##### Session Persistence
+
+ISA can maintain conversation context across sessions:
+
+```bash
+# Start a new session with a specific ID
+$ isa --session-id project-refactor
+You: Let's work on refactoring the database layer
+Assistant: I'll help you refactor the database layer. Let me examine your current setup...
+
+# Later, resume the same session
+$ isa --session-id project-refactor  
+You: What were we working on?
+Assistant: We were refactoring the database layer. Last time, we identified...
+```
+
+##### Custom Tools Configuration
+
+Create custom tools for ISA using JSON configuration:
+
+```json
+// isa-tools.json
+{
+  "tools": [
+    {
+      "name": "run_tests",
+      "description": "Run project tests",
+      "command": "npm test -- {{pattern}}",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "pattern": {
+            "type": "string",
+            "description": "Test file pattern"
+          }
+        }
+      }
+    }
+  ]
+}
+```
+
+Use custom tools:
+```bash
+$ isa "Run tests for the auth module" --local-tools-config ./isa-tools.json
+```
+
+##### Integration with SwiftOpenAICLI
+
+ISA is fully integrated with SwiftOpenAICLI and shares:
+- Configuration files (`~/.swiftopenai/config.json`)
+- MCP server configurations
+- API keys and settings
+- Session management
+
+You can seamlessly switch between `swiftopenai agent` and `isa` based on your needs:
+- Use `isa` for development tasks with enhanced UI and defaults
+- Use `swiftopenai agent` for general-purpose AI agent tasks
+
+#### Tips and Best Practices
+
+1. **Use `isa.md` files** - Document your project conventions for better assistance
+2. **Enable plan mode** - For complex tasks, use `--plan-mode` to review before execution
+3. **Track progress** - Use `--show-todos` to visualize task completion
+4. **Leverage sessions** - Use `--session-id` for long-running projects
+5. **Combine with MCP** - Connect to GitHub, databases, and more for powerful workflows
+6. **Custom shortcuts** - Create shell aliases for common ISA commands:
+   ```bash
+   alias isa-plan='isa --plan-mode --show-todos'
+   alias isa-debug='isa --verbose --show-tool-events'
+   ```
+
 ### MCP (Model Context Protocol) Integration 🔌
 
 SwiftOpenAI-CLI supports the Model Context Protocol (MCP), allowing you to connect to external services and tools through MCP servers. This feature is fully compatible with the Claude Code SDK specification, enabling seamless integration with a growing ecosystem of MCP-compatible tools.
