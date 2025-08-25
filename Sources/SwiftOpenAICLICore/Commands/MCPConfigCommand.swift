@@ -2,17 +2,23 @@ import ArgumentParser
 import Foundation
 import Rainbow
 
-struct MCPConfigCommand: AsyncParsableCommand {
-    static let configuration = CommandConfiguration(
+public struct MCPConfigCommand: AsyncParsableCommand {
+    public static let configuration = CommandConfiguration(
         commandName: "mcp",
         abstract: "Manage MCP server configurations",
         subcommands: [Add.self, AddHTTP.self, Remove.self, List.self, Enable.self, Disable.self]
     )
+
+    public init() {}
+
     
     struct Add: AsyncParsableCommand {
-        static let configuration = CommandConfiguration(
+        public static let configuration = CommandConfiguration(
             abstract: "Add a new MCP server configuration"
         )
+
+    public init() {}
+
         
         @Argument(help: "The name of the MCP server")
         var name: String
@@ -29,7 +35,7 @@ struct MCPConfigCommand: AsyncParsableCommand {
         @Flag(name: .long, help: "Enable the server immediately")
         var enable = false
         
-        mutating func run() async throws {
+        public mutating func run() async throws {
             let configManager = ConfigurationManager.shared
             var config = configManager.getConfiguration()
             
@@ -88,10 +94,13 @@ struct MCPConfigCommand: AsyncParsableCommand {
     }
     
     struct AddHTTP: AsyncParsableCommand {
-        static let configuration = CommandConfiguration(
+        public static let configuration = CommandConfiguration(
             commandName: "add-http",
             abstract: "Add a new HTTP-based MCP server configuration (e.g., Zapier)"
         )
+
+    public init() {}
+
         
         @Argument(help: "The name of the MCP server")
         var name: String
@@ -105,7 +114,7 @@ struct MCPConfigCommand: AsyncParsableCommand {
         @Flag(name: .long, help: "Enable the server immediately")
         var enable = false
         
-        mutating func run() async throws {
+        public mutating func run() async throws {
             let configManager = ConfigurationManager.shared
             var config = configManager.getConfiguration()
             
@@ -176,14 +185,17 @@ struct MCPConfigCommand: AsyncParsableCommand {
     }
     
     struct Remove: AsyncParsableCommand {
-        static let configuration = CommandConfiguration(
+        public static let configuration = CommandConfiguration(
             abstract: "Remove an MCP server configuration"
         )
+
+    public init() {}
+
         
         @Argument(help: "The name of the MCP server to remove")
         var name: String
         
-        mutating func run() async throws {
+        public mutating func run() async throws {
             let configManager = ConfigurationManager.shared
             var config = configManager.getConfiguration()
             
@@ -214,11 +226,14 @@ struct MCPConfigCommand: AsyncParsableCommand {
     }
     
     struct List: AsyncParsableCommand {
-        static let configuration = CommandConfiguration(
+        public static let configuration = CommandConfiguration(
             abstract: "List all configured MCP servers"
         )
+
+    public init() {}
+
         
-        mutating func run() async throws {
+        public mutating func run() async throws {
             let configManager = ConfigurationManager.shared
             let config = configManager.getConfiguration()
             
@@ -276,14 +291,17 @@ struct MCPConfigCommand: AsyncParsableCommand {
     }
     
     struct Enable: AsyncParsableCommand {
-        static let configuration = CommandConfiguration(
+        public static let configuration = CommandConfiguration(
             abstract: "Enable an MCP server"
         )
+
+    public init() {}
+
         
         @Argument(help: "The name of the MCP server to enable")
         var name: String
         
-        mutating func run() async throws {
+        public mutating func run() async throws {
             let configManager = ConfigurationManager.shared
             var config = configManager.getConfiguration()
             
@@ -334,14 +352,17 @@ struct MCPConfigCommand: AsyncParsableCommand {
     }
     
     struct Disable: AsyncParsableCommand {
-        static let configuration = CommandConfiguration(
+        public static let configuration = CommandConfiguration(
             abstract: "Disable an MCP server"
         )
+
+    public init() {}
+
         
         @Argument(help: "The name of the MCP server to disable")
         var name: String
         
-        mutating func run() async throws {
+        public mutating func run() async throws {
             let configManager = ConfigurationManager.shared
             var config = configManager.getConfiguration()
             

@@ -3,11 +3,14 @@ import Foundation
 import SwiftOpenAI
 import Rainbow
 
-struct CompleteCommand: AsyncParsableCommand {
-    static let configuration = CommandConfiguration(
+public struct CompleteCommand: AsyncParsableCommand {
+    public static let configuration = CommandConfiguration(
         commandName: "complete",
         abstract: "Generate text completions (uses chat API)"
     )
+
+    public init() {}
+
     
     @Argument(help: "The prompt for completion")
     var prompt: String
@@ -33,7 +36,7 @@ struct CompleteCommand: AsyncParsableCommand {
     @Option(name: .long, help: "Reasoning effort for GPT-5 models (minimal, low, medium, high)")
     var reasoning: ReasoningEffort = .medium
     
-    mutating func run() async throws {
+    public mutating func run() async throws {
         print("Generating completion...".cyan)
         
         do {

@@ -1,5 +1,5 @@
 import XCTest
-@testable import SwiftOpenAICLI
+@testable import SwiftOpenAICLICore
 
 final class OpenAIServiceErrorTests: XCTestCase {
     

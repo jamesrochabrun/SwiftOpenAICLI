@@ -218,6 +218,7 @@ public final class OpenAIService {
   
   public func agentChatWithExecutor(message: String, model: String, toolExecutor: ToolExecutor, system: String? = nil, temperature: Double = 1.0, maxTokens: Int? = nil, outputFormat: String = "plain", enabledTools: Set<String>?, verbose: String = "medium", reasoning: String = "medium", sessionId: String? = nil, maxToolCalls: Int = 10) async throws {
     let openAI = try getService()
+    let outputHelper = OutputHelper(outputFormat: outputFormat)
     
     let normalizedModel = normalizeModelName(model)
     let isGPT5Model = normalizedModel.lowercased().contains("gpt-5")
@@ -236,14 +237,15 @@ public final class OpenAIService {
       if TokenCalculator.shouldCompact(tokens: projectedTokens, for: normalizedModel) {
         // Show compaction warning
         if let warning = TokenCalculator.formatCapacityWarning(tokens: currentTokens, for: normalizedModel) {
-          print(warning.yellow)
+          outputHelper.printDiagnostic(warning, color: { $0.yellow })
         }
         
         // Perform compaction
         let compactor = ConversationCompactor()
         let compactedMessage = try await compactor.compactConversation(
           messages: messages,
-          currentModel: normalizedModel
+          currentModel: normalizedModel,
+          outputHelper: outputHelper
         )
         
         // Replace messages with compacted version
@@ -252,11 +254,11 @@ public final class OpenAIService {
         
         // Show compaction count
         let compactionCount = SessionManager.shared.getCompactionCount(for: sessionId)
-        print("📚 Conversation compacted \(compactionCount) time\(compactionCount == 1 ? "" : "s")".lightBlack)
-        print("")
+        outputHelper.printDiagnostic("📚 Conversation compacted \(compactionCount) time\(compactionCount == 1 ? "" : "s")", color: { $0.lightBlack })
+        outputHelper.printDiagnostic("")
       } else if let warning = TokenCalculator.formatCapacityWarning(tokens: currentTokens, for: normalizedModel) {
         // Show capacity warning if above 80%
-        print(warning.yellow)
+        outputHelper.printDiagnostic(warning, color: { $0.yellow })
       }
       
       // Add system message if not already present and provided

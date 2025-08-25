@@ -1,6 +1,6 @@
 import XCTest
 import SwiftOpenAI
-@testable import SwiftOpenAICLI
+@testable import SwiftOpenAICLICore
 
 final class LocalToolsConfigTests: XCTestCase {
     

@@ -3,11 +3,14 @@ import Foundation
 import SwiftOpenAI
 import Rainbow
 
-struct ImageCommand: AsyncParsableCommand {
-    static let configuration = CommandConfiguration(
+public struct ImageCommand: AsyncParsableCommand {
+    public static let configuration = CommandConfiguration(
         commandName: "image",
         abstract: "Generate images with AI models"
     )
+
+    public init() {}
+
     
     @Argument(help: "The prompt for image generation")
     var prompt: String
@@ -27,7 +30,7 @@ struct ImageCommand: AsyncParsableCommand {
     @Option(name: .long, help: "Output directory for saving images")
     var output: String = "."
     
-    mutating func run() async throws {
+    public mutating func run() async throws {
         print("Generating image with prompt: \"\(prompt)\"".cyan)
         print("Model: \(model), Size: \(size), Quality: \(quality)".green)
         

@@ -1,5 +1,5 @@
 import Foundation
-@testable import SwiftOpenAICLI
+@testable import SwiftOpenAICLICore
 
 class MockConfigurationManager {
     static let shared = MockConfigurationManager()

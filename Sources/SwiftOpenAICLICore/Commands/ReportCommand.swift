@@ -7,11 +7,14 @@ import PDFKit
 import WebKit
 #endif
 
-struct ReportCommand: AsyncParsableCommand {
-  static let configuration = CommandConfiguration(
+public struct ReportCommand: AsyncParsableCommand {
+  public static let configuration = CommandConfiguration(
     commandName: "report",
     abstract: "Generate research reports with PDF export and visualizations"
   )
+
+    public init() {}
+
   
   @Argument(help: "The research task or question")
   var query: String
@@ -52,7 +55,7 @@ struct ReportCommand: AsyncParsableCommand {
   @Flag(name: .long, help: "Show full tool results without truncation")
   var showToolEventsVerbose = false
   
-  mutating func run() async throws {
+  public mutating func run() async throws {
     // Default system prompt for reports
     let defaultSystem = """
     You are a professional research analyst. Create detailed, well-structured reports with:

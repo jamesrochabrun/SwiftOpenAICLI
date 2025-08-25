@@ -4,11 +4,14 @@ import SwiftOpenAI
 import Rainbow
 import SwiftyTextTable
 
-struct ModelsCommand: AsyncParsableCommand {
-    static let configuration = CommandConfiguration(
+public struct ModelsCommand: AsyncParsableCommand {
+    public static let configuration = CommandConfiguration(
         commandName: "models",
         abstract: "List available OpenAI models"
     )
+
+    public init() {}
+
     
     @Option(name: .long, help: "Filter models by name")
     var filter: String?
@@ -16,7 +19,7 @@ struct ModelsCommand: AsyncParsableCommand {
     @Flag(name: .long, help: "Show detailed information")
     var detailed = false
     
-    mutating func run() async throws {
+    public mutating func run() async throws {
         print("Fetching available models...".cyan)
         
         do {

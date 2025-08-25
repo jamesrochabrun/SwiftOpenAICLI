@@ -3,11 +3,14 @@ import Foundation
 import SwiftOpenAI
 import Rainbow
 
-struct EmbedCommand: AsyncParsableCommand {
-    static let configuration = CommandConfiguration(
+public struct EmbedCommand: AsyncParsableCommand {
+    public static let configuration = CommandConfiguration(
         commandName: "embed",
         abstract: "Generate text embeddings"
     )
+
+    public init() {}
+
     
     @Argument(help: "The text to embed")
     var text: String
@@ -24,7 +27,7 @@ struct EmbedCommand: AsyncParsableCommand {
     @Flag(name: .long, help: "Show embedding statistics")
     var stats = false
     
-    mutating func run() async throws {
+    public mutating func run() async throws {
         print("Generating embeddings...".cyan)
         let displayText = text.count > 50 ? "\(text.prefix(50))..." : text
         print("Text: \"\(displayText)\"".green)

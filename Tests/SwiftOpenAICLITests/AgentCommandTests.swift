@@ -1,6 +1,6 @@
 import XCTest
 import ArgumentParser
-@testable import SwiftOpenAICLI
+@testable import SwiftOpenAICLICore
 
 final class AgentCommandTests: XCTestCase {
     

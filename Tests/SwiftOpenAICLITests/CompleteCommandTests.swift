@@ -1,5 +1,5 @@
 import XCTest
-@testable import SwiftOpenAICLI
+@testable import SwiftOpenAICLICore
 import ArgumentParser
 
 final class CompleteCommandTests: XCTestCase {

@@ -1,5 +1,6 @@
 import ArgumentParser
 import Foundation
+import SwiftOpenAICLICore
 
 @main
 struct OpenAICLI: AsyncParsableCommand {
@@ -148,16 +149,16 @@ struct OpenAICLI: AsyncParsableCommand {
     """,
     version: "1.5.0",
     subcommands: [
-      ChatCommand.self,
-      AgentCommand.self,
-      ReportCommand.self,
-      ImageCommand.self,
-      ModelsCommand.self,
-      CompleteCommand.self,
-      EmbedCommand.self,
-      ConfigCommand.self
+      SwiftOpenAICLICore.ChatCommand.self,
+      SwiftOpenAICLICore.AgentCommand.self,
+      SwiftOpenAICLICore.ReportCommand.self,
+      SwiftOpenAICLICore.ImageCommand.self,
+      SwiftOpenAICLICore.ModelsCommand.self,
+      SwiftOpenAICLICore.CompleteCommand.self,
+      SwiftOpenAICLICore.EmbedCommand.self,
+      SwiftOpenAICLICore.ConfigCommand.self
     ],
-    defaultSubcommand: ChatCommand.self
+    defaultSubcommand: SwiftOpenAICLICore.ChatCommand.self
   )
   
 }

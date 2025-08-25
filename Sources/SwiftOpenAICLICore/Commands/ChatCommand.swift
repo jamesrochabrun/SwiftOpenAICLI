@@ -3,11 +3,14 @@ import Foundation
 import SwiftOpenAI
 import Rainbow
 
-struct ChatCommand: AsyncParsableCommand {
-    static let configuration = CommandConfiguration(
+public struct ChatCommand: AsyncParsableCommand {
+    public static let configuration = CommandConfiguration(
         commandName: "chat",
         abstract: "Chat with OpenAI models"
     )
+
+    public init() {}
+
     
     @Argument(help: "The message to send to the AI")
     var message: String?
@@ -42,7 +45,7 @@ struct ChatCommand: AsyncParsableCommand {
     @Option(name: .long, help: "Reasoning effort for GPT-5 models (minimal, low, medium, high)")
     var reasoning: ReasoningEffort = .medium
     
-    mutating func run() async throws {
+    public mutating func run() async throws {
         if interactive {
             try await runInteractiveMode()
         } else if let message = message {

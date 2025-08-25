@@ -11,7 +11,8 @@ class ConversationCompactor {
   }
   
   func compactConversation(messages: [ChatCompletionParameters.Message],
-                           currentModel: String) async throws -> ChatCompletionParameters.Message {
+                           currentModel: String,
+                           outputHelper: OutputHelper? = nil) async throws -> ChatCompletionParameters.Message {
     
     // Prepare the conversation for summarization (limit size to prevent compaction from failing)
     var conversationText = formatConversationForSummary(messages)
@@ -71,9 +72,10 @@ class ConversationCompactor {
     let compactionModels = ["gpt-5-mini", "gpt-4o-mini", "gpt-3.5-turbo"]
     var summaryContent: String? = nil
     var lastError: Error? = nil
+    let output = outputHelper ?? OutputHelper(outputFormat: "plain")
     
     for model in compactionModels {
-      print("\n🔄 Auto-compacting conversation with \(model)...".yellow)
+      output.printDiagnostic("\n🔄 Auto-compacting conversation with \(model)...", color: { $0.yellow })
       
       let parameters = ChatCompletionParameters(
         messages: [
@@ -93,15 +95,15 @@ class ConversationCompactor {
         }
       } catch {
         lastError = error
-        print("   ⚠️ Failed with \(model): \(error.localizedDescription)".red)
+        output.printDiagnostic("   ⚠️ Failed with \(model): \(error.localizedDescription)", color: { $0.red })
         if model != compactionModels.last {
-          print("   Trying fallback model...".yellow)
+          output.printDiagnostic("   Trying fallback model...", color: { $0.yellow })
         }
       }
     }
     
     guard let summaryContent = summaryContent else {
-      print("❌ All compaction models failed".red)
+      output.printDiagnostic("❌ All compaction models failed", color: { $0.red })
       throw lastError ?? CompactionError.failedToGenerateSummary
     }
     
@@ -121,11 +123,11 @@ class ConversationCompactor {
     let compactedTokens = TokenCalculator.estimateTokens(for: summaryContent)
     let compressionRatio = Double(compactedTokens) / Double(originalTokens) * 100
     
-    print("✅ Compaction complete!".green)
-    print("   Original: ~\(originalTokens) tokens".lightBlack)
-    print("   Compacted: ~\(compactedTokens) tokens".lightBlack)
-    print("   Compression: \(String(format: "%.1f", compressionRatio))% of original size".lightBlack)
-    print("")
+    output.printDiagnostic("✅ Compaction complete!", color: { $0.green })
+    output.printDiagnostic("   Original: ~\(originalTokens) tokens", color: { $0.lightBlack })
+    output.printDiagnostic("   Compacted: ~\(compactedTokens) tokens", color: { $0.lightBlack })
+    output.printDiagnostic("   Compression: \(String(format: "%.1f", compressionRatio))% of original size", color: { $0.lightBlack })
+    output.printDiagnostic("")
     
     return compactedMessage
   }

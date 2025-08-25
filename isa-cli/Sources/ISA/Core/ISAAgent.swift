@@ -109,7 +109,7 @@ class ISAAgent {
       showToolEvents: showToolEvents
     )
     
-    var currentSessionId = sessionId ?? UUID().uuidString
+    let currentSessionId = sessionId ?? UUID().uuidString
     
     while true {
       // Show prompt

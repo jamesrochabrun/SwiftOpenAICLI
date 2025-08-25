@@ -16,7 +16,7 @@ public extension CLITool {
     return true
   }
   
-  public func toChatFunction() -> ChatCompletionParameters.ChatFunction {
+  func toChatFunction() -> ChatCompletionParameters.ChatFunction {
     return ChatCompletionParameters.ChatFunction(
       name: name,
       strict: isStrictModeCompatible,

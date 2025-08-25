@@ -6,11 +6,14 @@ import Rainbow
 import Darwin
 #endif
 
-struct AgentCommand: AsyncParsableCommand {
-  static let configuration = CommandConfiguration(
+public struct AgentCommand: AsyncParsableCommand {
+  public static let configuration = CommandConfiguration(
     commandName: "agent",
     abstract: "Chat with OpenAI models using tool capabilities"
   )
+
+    public init() {}
+
   
   @Argument(help: "The message to send to the AI agent")
   var message: String?
@@ -72,7 +75,7 @@ struct AgentCommand: AsyncParsableCommand {
   @Option(name: .long, help: "Maximum number of tool calls allowed (default: 10)")
   var maxToolCalls: Int = 10
   
-  mutating func run() async throws {
+  public mutating func run() async throws {
     let mcpConfigs = try loadMCPServers()
     
     // Determine which tools to enable
