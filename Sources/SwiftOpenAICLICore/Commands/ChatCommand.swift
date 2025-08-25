@@ -67,6 +67,24 @@ public struct ChatCommand: AsyncParsableCommand {
     }
     
     private func runInteractiveMode() async throws {
+        // Initialize input processor and command registry
+        let inputProcessor = InputProcessor()
+        let registry = SlashCommandRegistry.shared
+        
+        // Create local mutable copies
+        var currentModel = model
+        var currentTemperature = temperature
+        var currentMaxTokens = maxTokens
+        
+        // Create session ID and command context
+        var currentSessionId = UUID().uuidString
+        var commandContext = CommandContext(
+            sessionId: currentSessionId,
+            currentModel: currentModel,
+            temperature: currentTemperature,
+            maxTokens: currentMaxTokens,
+            isAgentMode: false
+        )
         if !plain {
             print("🤖 OpenAI Chat (\(model))".cyan)
             print("Type 'exit' to quit, 'clear' to clear history".lightBlack)
@@ -74,41 +92,84 @@ public struct ChatCommand: AsyncParsableCommand {
         }
         
         while true {
-            if !plain {
-                print("You: ".green, terminator: "")
-            }
-            guard let input = readLine(), !input.isEmpty else { continue }
-            
-            if input.lowercased() == "exit" {
+            // Use input processor for reading
+            guard let input = inputProcessor.readInput() else {
+                // EOF detected (Ctrl+D)
                 if !plain {
-                    print("Goodbye!".yellow)
+                    print("\nGoodbye!".yellow)
                 }
                 break
             }
             
-            if input.lowercased() == "clear" {
+            // Process input through the input processor
+            let action = inputProcessor.processInput(input)
+            
+            switch action {
+            case .empty:
+                continue
+                
+            case .exit:
+                if !plain {
+                    print("Goodbye!".yellow)
+                }
+                break
+                
+            case .clearScreen:
                 if !plain {
                     print("Conversation cleared.".yellow)
                 }
+                SessionManager.shared.clearSession(currentSessionId)
+                currentSessionId = UUID().uuidString
+                commandContext.sessionId = currentSessionId
                 continue
-            }
+                
+            case .continueMultiline:
+                continue
+                
+            case .cancelMultiline:
+                if !plain {
+                    print("Multiline input cancelled".yellow)
+                }
+                continue
+                
+            case .slashCommand(let command):
+                do {
+                    // Execute slash command
+                    let shouldContinue = try await registry.execute(command, context: commandContext)
+                    if !shouldContinue {
+                        if !plain {
+                            print("Goodbye!".yellow)
+                        }
+                        break
+                    }
+                    // Update local variables if model changed
+                    currentModel = commandContext.currentModel
+                    currentTemperature = commandContext.temperature
+                    currentMaxTokens = commandContext.maxTokens
+                } catch {
+                    print("\(error.localizedDescription)".red)
+                }
+                continue
+                
+            case .message(let trimmedInput):
             
-            do {
-                try await OpenAIService.shared.chat(
-                    message: input,
-                    model: model,
+                do {
+                    try await OpenAIService.shared.chat(
+                        message: trimmedInput,
+                    model: currentModel,
                     system: system,
-                    temperature: temperature,
-                    maxTokens: maxTokens,
+                    temperature: currentTemperature,
+                    maxTokens: currentMaxTokens,
                     stream: !noStream,
                     plain: plain,
                     verbose: verbose.rawValue,
                     reasoning: reasoning.rawValue
-                )
-                print() // Add spacing
-            } catch {
-                print("Error: \(error.localizedDescription)".red)
-            }
+                    )
+                    print() // Add spacing
+                } catch {
+                    print("Error: \(error.localizedDescription)".red)
+                }
+            } // end switch
         }
     }
 }
