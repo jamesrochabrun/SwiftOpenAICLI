@@ -328,7 +328,7 @@ public final class OpenAIService {
         fflush(stdout)
       }
     } else if outputFormat == "plain" || outputFormat == "interactive-stream" {
-      print("Assistant: ".cyan + "(thinking...)", terminator: "")
+      print("Assistant: ".cyan, terminator: "")
       fflush(stdout)
     }
     
@@ -338,6 +338,29 @@ public final class OpenAIService {
     var totalCost: Double = 0.0
     var numTurns = 0
     var finalResponse = ""
+    
+    // Show initial thinking indicator for first response
+    let initialIndicator: LoadingIndicator?
+    if outputFormat == "interactive-stream" {
+      let config = ConfigurationManager.shared.getConfiguration()
+      let useAnimated = config.animatedLoading ?? true
+      if useAnimated {
+        let forceAI = true // Always force AI words in interactive mode
+        let thinkingWord = await LoadingWordGenerator.shared.getThinkingWord(useAI: false, forceAI: forceAI)
+        initialIndicator = LoadingIndicator(word: "("+thinkingWord+"...)", color: { $0.lightBlack })
+        initialIndicator?.start()
+      } else {
+        print("(thinking...)".lightBlack, terminator: "")
+        fflush(stdout)
+        initialIndicator = nil
+      }
+    } else if outputFormat == "plain" {
+      print("(thinking...)".lightBlack, terminator: "")
+      fflush(stdout)
+      initialIndicator = nil
+    } else {
+      initialIndicator = nil
+    }
     
     while toolCallCount < maxToolCalls {
       parameters.messages = conversationMessages
@@ -354,11 +377,11 @@ public final class OpenAIService {
         }
       }
       
-      // Show loading indicator while waiting for assistant
+      // Show loading indicator while waiting for assistant on subsequent turns
       let indicator: LoadingIndicator?
       if outputFormat == "interactive-stream" && numTurns > 1 {
         // Only show on subsequent turns after tools have run
-        let forceAI = (outputFormat == "interactive-stream") // Force AI in agent/ISA mode
+        let forceAI = true // Force AI in agent/ISA mode
         let thinkingWord = await LoadingWordGenerator.shared.getThinkingWord(useAI: false, forceAI: forceAI)
         indicator = LoadingIndicator(word: thinkingWord, color: { $0.lightBlack })
         indicator?.start()
@@ -389,6 +412,11 @@ public final class OpenAIService {
       
       // Stop loading indicator
       indicator?.stop()
+      
+      // Stop initial indicator on first turn
+      if numTurns == 1 {
+        initialIndicator?.stop()
+      }
       
       if outputFormat == "plain" || outputFormat == "interactive-stream" {
         print("\r", terminator: "")
