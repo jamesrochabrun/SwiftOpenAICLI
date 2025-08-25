@@ -225,7 +225,7 @@ class ISAAgent {
             system: system,
             temperature: currentTemperature,  // Use potentially updated temperature
             maxTokens: currentMaxTokens,  // Use potentially updated max tokens
-            outputFormat: "plain",
+            outputFormat: "interactive-stream",  // Use interactive-stream to enable loading indicators
             enabledTools: commandContext.enabledTools,  // Use context's enabled tools
             verbose: getVerbosityLevel(),
             reasoning: getReasoningLevel(),

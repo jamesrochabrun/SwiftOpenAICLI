@@ -13,6 +13,9 @@ public struct Configuration: Codable {
     public var baseURL: String?
     public var debugEnabled: Bool?
     
+    // Loading indicator configuration
+    public var animatedLoading: Bool?  // Enable animated loading indicators
+    
     // MCP server configuration (supports both array and object formats)
     public var mcpServers: MCPServersConfig?
     

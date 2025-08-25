@@ -51,6 +51,8 @@ public class ConfigurationManager {
             return configuration.maxTokens.map { String($0) }
         case "max-tool-calls":
             return configuration.maxToolCalls.map { String($0) }
+        case "animated-loading":
+            return configuration.animatedLoading.map { String($0) }
         case "provider":
             return configuration.provider
         case "base-url":
@@ -88,6 +90,8 @@ public class ConfigurationManager {
                 throw ConfigurationError.invalidValue(key: key, value: value)
             }
             configuration.maxToolCalls = calls
+        case "animated-loading":
+            configuration.animatedLoading = value.lowercased() == "true" || value == "1"
         case "provider":
             configuration.provider = value
         case "base-url":
@@ -113,6 +117,9 @@ public class ConfigurationManager {
         }
         if let maxToolCalls = configuration.maxToolCalls {
             items.append(("max-tool-calls", String(maxToolCalls)))
+        }
+        if let animatedLoading = configuration.animatedLoading {
+            items.append(("animated-loading", String(animatedLoading)))
         }
         if let provider = configuration.provider {
             items.append(("provider", provider))

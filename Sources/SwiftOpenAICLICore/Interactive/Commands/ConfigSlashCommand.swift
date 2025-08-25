@@ -14,7 +14,7 @@ public struct ConfigSlashCommand: SlashCommand {
     
     if args.isEmpty {
       // Show all configuration
-      showConfiguration()
+      showConfiguration(context: context)
     } else if args.count == 1 {
       // Show specific config value
       showConfigValue(args[0])
@@ -26,7 +26,7 @@ public struct ConfigSlashCommand: SlashCommand {
     return true
   }
   
-  private func showConfiguration() {
+  private func showConfiguration(context: CommandContext) {
     print("\n⚙️  " + "Current Configuration".cyan.bold)
     print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━".lightBlack)
     
@@ -59,7 +59,14 @@ public struct ConfigSlashCommand: SlashCommand {
       print("• " + "max-tool-calls:".green + " (default)".lightBlack)
     }
     
-    print("• " + "output-format:".green + "  \(config.get("output-format") ?? "plain")")
+    // Only show output-format when not in agent/ISA mode
+    if !context.isAgentMode {
+      print("• " + "output-format:".green + "  \(config.get("output-format") ?? "plain")")
+    }
+    
+    if let animatedLoading = config.get("animated-loading") {
+      print("• " + "animated-loading:".green + " \(animatedLoading)")
+    }
     
     if let provider = config.provider {
       print("• " + "provider:".green + "       \(provider)")

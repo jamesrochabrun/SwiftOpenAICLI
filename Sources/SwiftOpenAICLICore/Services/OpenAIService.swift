@@ -113,10 +113,21 @@ public final class OpenAIService {
       }
       print() // New line after streaming
     } else {
-      // Show loading indicator for non-streaming mode
-      if !plain {
+      // Show animated loading indicator for non-streaming mode
+      let indicator: LoadingIndicator?
+      let useAnimated = ConfigurationManager.shared.getConfiguration().animatedLoading ?? true
+      if !plain && useAnimated {
+        // For non-agent mode, we don't force AI words
+        let thinkingWord = await LoadingWordGenerator.shared.getThinkingWord(useAI: false, forceAI: false)
+        indicator = LoadingIndicator(word: thinkingWord, color: { $0.lightBlack })
+        indicator?.start()
+      } else if !plain {
+        // Static loading if animation is disabled
         print("Thinking...".lightBlack, terminator: "")
         fflush(stdout)
+        indicator = nil
+      } else {
+        indicator = nil
       }
       
       // Add timeout handling with Task
@@ -141,10 +152,7 @@ public final class OpenAIService {
       }
       
       // Clear the loading indicator
-      if !plain {
-        print("\r", terminator: "") // Carriage return to overwrite "Thinking..."
-        fflush(stdout)
-      }
+      indicator?.stop()
       
       if let content = result.choices?.first?.message?.content {
         if plain {
@@ -346,6 +354,18 @@ public final class OpenAIService {
         }
       }
       
+      // Show loading indicator while waiting for assistant
+      let indicator: LoadingIndicator?
+      if outputFormat == "interactive-stream" && numTurns > 1 {
+        // Only show on subsequent turns after tools have run
+        let forceAI = (outputFormat == "interactive-stream") // Force AI in agent/ISA mode
+        let thinkingWord = await LoadingWordGenerator.shared.getThinkingWord(useAI: false, forceAI: forceAI)
+        indicator = LoadingIndicator(word: thinkingWord, color: { $0.lightBlack })
+        indicator?.start()
+      } else {
+        indicator = nil
+      }
+      
       // Add timeout handling with Task
       let result = try await withThrowingTaskGroup(of: ChatCompletionObject.self) { group in
         group.addTask {
@@ -366,6 +386,9 @@ public final class OpenAIService {
         }
         throw OpenAIServiceError.timeout(seconds: timeout)
       }
+      
+      // Stop loading indicator
+      indicator?.stop()
       
       if outputFormat == "plain" || outputFormat == "interactive-stream" {
         print("\r", terminator: "")
@@ -431,8 +454,43 @@ public final class OpenAIService {
               fflush(stdout)
             }
           } else if outputFormat == "interactive-stream" {
-            print("\n→ ".lightBlack + "Calling tool: ".lightBlack + toolName.yellow + " " + toolCall.function.arguments.lightBlack)
+            print("\n→ ".lightBlack + "Calling tool: ".lightBlack + toolName.yellow)
+            
+            // Show animated loading indicator if enabled
+            let config = ConfigurationManager.shared.getConfiguration()
+            let useAnimated = config.animatedLoading ?? true
+            
+            let indicator: LoadingIndicator?
+            if useAnimated {
+              // Force AI words in agent/ISA mode (interactive-stream format)
+              let forceAI = (outputFormat == "interactive-stream")
+              let loadingWord = await LoadingWordGenerator.shared.getLoadingWord(for: toolName, useAI: false, forceAI: forceAI)
+              indicator = LoadingIndicator(word: "   \(loadingWord)", color: { $0.cyan })
+              indicator?.start()
+            } else {
+              indicator = nil
+            }
+            
+            let result = try await toolExecutor.executeTool(
+              name: toolName,
+              arguments: toolCall.function.arguments,
+              outputFormat: "silent"
+            )
+            
+            indicator?.stop()
+            
+            // Continue with result display
+            let truncatedResult = toolExecutor.truncateForDisplay(result)
+            print("← ".lightBlack + "Result: ".lightBlack + truncatedResult.green)
             fflush(stdout)
+            
+            conversationMessages.append(.init(
+              role: .tool,
+              content: .text(result),
+              toolCallID: toolId
+            ))
+            
+            continue  // Skip the duplicate code below
           }
           
           let effectiveFormat = outputFormat == "interactive-stream" ? "silent" : outputFormat
