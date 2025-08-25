@@ -45,9 +45,9 @@ public class LoadingWordGenerator {
         await self.generateAIWord(for: toolName, category: category)
       }
       
-      // Add timeout task
+      // Add timeout task - increased for better success rate
       group.addTask {
-        try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 second timeout
+        try? await Task.sleep(nanoseconds: 1_000_000_000) // 1.0 second timeout
         return nil
       }
       
@@ -82,7 +82,10 @@ public class LoadingWordGenerator {
       Just respond with the single word, nothing else.
       """
       
-      let service = try service.getService()
+      guard let service = try? service.getService() else {
+        // Service initialization failed, use fallback
+        return nil
+      }
       
       let params = ChatCompletionParameters(
         messages: [.init(role: .user, content: .text(prompt))],
@@ -116,8 +119,14 @@ public class LoadingWordGenerator {
   }
   
   /// Get loading word for thinking/processing (synchronous fallback version)
-  public func getThinkingWord() -> String {
+  public func getThinkingWordSync() -> String {
     return fallbackWords["thinking"]?.randomElement() ?? "Thinking"
+  }
+  
+  /// Get random fallback word for a specific tool (synchronous, no delay)
+  public func getRandomFallbackForTool(_ toolName: String) -> String {
+    let category = categorizeToolAsync(toolName)
+    return getRandomFallback(for: category)
   }
   
   /// Get loading word for thinking/processing (async version that can use AI)
@@ -129,16 +138,16 @@ public class LoadingWordGenerator {
       return getRandomFallback(for: "thinking")
     }
     
-    // Try to get AI-generated thinking word with timeout
+    // Try to get AI-generated thinking word with longer timeout for better success rate
     let aiWord: String? = await withTaskGroup(of: String?.self) { group in
       // Add AI generation task
       group.addTask {
         await self.generateAIWord(for: "thinking", category: "thinking")
       }
       
-      // Add timeout task
+      // Add timeout task - increased to 1.5 seconds for better AI response rate
       group.addTask {
-        try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 second timeout
+        try? await Task.sleep(nanoseconds: 1_500_000_000) // 1.5 second timeout
         return nil
       }
       

@@ -345,10 +345,16 @@ public final class OpenAIService {
       let config = ConfigurationManager.shared.getConfiguration()
       let useAnimated = config.animatedLoading ?? true
       if useAnimated {
-        let forceAI = true // Always force AI words in interactive mode
-        let thinkingWord = await LoadingWordGenerator.shared.getThinkingWord(useAI: false, forceAI: forceAI)
-        initialIndicator = LoadingIndicator(word: "("+thinkingWord+"...)", color: { $0.lightBlack })
+        // Use fallback word immediately - NO DELAY
+        let fallbackWord = LoadingWordGenerator.shared.getThinkingWordSync() // Sync version with random fallback
+        initialIndicator = LoadingIndicator(word: "("+fallbackWord+"...)", color: { $0.lightBlack })
         initialIndicator?.start()
+        
+        // Fire-and-forget: Try to get AI word in background (won't delay response)
+        Task {
+          _ = await LoadingWordGenerator.shared.getThinkingWord(useAI: false, forceAI: true)
+          // We don't use it here, but it might cache for next time
+        }
       } else {
         print("(thinking...)".lightBlack, terminator: "")
         fflush(stdout)
@@ -380,11 +386,15 @@ public final class OpenAIService {
       // Show loading indicator while waiting for assistant on subsequent turns
       let indicator: LoadingIndicator?
       if outputFormat == "interactive-stream" && numTurns > 1 {
-        // Only show on subsequent turns after tools have run
-        let forceAI = true // Force AI in agent/ISA mode
-        let thinkingWord = await LoadingWordGenerator.shared.getThinkingWord(useAI: false, forceAI: forceAI)
-        indicator = LoadingIndicator(word: thinkingWord, color: { $0.lightBlack })
+        // Use fallback immediately for subsequent turns - NO DELAY
+        let fallbackWord = LoadingWordGenerator.shared.getThinkingWordSync() // Sync version
+        indicator = LoadingIndicator(word: fallbackWord, color: { $0.lightBlack })
         indicator?.start()
+        
+        // Fire-and-forget: Try AI word in background
+        Task {
+          _ = await LoadingWordGenerator.shared.getThinkingWord(useAI: false, forceAI: true)
+        }
       } else {
         indicator = nil
       }
@@ -490,11 +500,15 @@ public final class OpenAIService {
             
             let indicator: LoadingIndicator?
             if useAnimated {
-              // Force AI words in agent/ISA mode (interactive-stream format)
-              let forceAI = (outputFormat == "interactive-stream")
-              let loadingWord = await LoadingWordGenerator.shared.getLoadingWord(for: toolName, useAI: false, forceAI: forceAI)
-              indicator = LoadingIndicator(word: "   \(loadingWord)", color: { $0.cyan })
+              // Use fallback immediately - NO DELAY before tool execution
+              let fallbackWord = LoadingWordGenerator.shared.getRandomFallbackForTool(toolName)
+              indicator = LoadingIndicator(word: "   \(fallbackWord)", color: { $0.cyan })
               indicator?.start()
+              
+              // Fire-and-forget: Try AI word in background
+              Task {
+                _ = await LoadingWordGenerator.shared.getLoadingWord(for: toolName, useAI: false, forceAI: true)
+              }
             } else {
               indicator = nil
             }
