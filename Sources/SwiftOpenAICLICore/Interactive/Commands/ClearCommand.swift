@@ -9,7 +9,7 @@ public struct ClearCommand: SlashCommand {
   
   public init() {}
   
-  public func execute(arguments: String?, context: CommandContext) async throws -> Bool {
+  public func execute(arguments: String?, context: inout CommandContext) async throws -> Bool {
     // Clear the session
     SessionManager.shared.clearSession(context.sessionId)
     

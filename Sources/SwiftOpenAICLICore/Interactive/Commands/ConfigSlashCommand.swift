@@ -9,7 +9,7 @@ public struct ConfigSlashCommand: SlashCommand {
   
   public init() {}
   
-  public func execute(arguments: String?, context: CommandContext) async throws -> Bool {
+  public func execute(arguments: String?, context: inout CommandContext) async throws -> Bool {
     let args = arguments?.split(separator: " ", maxSplits: 1).map(String.init) ?? []
     
     if args.isEmpty {

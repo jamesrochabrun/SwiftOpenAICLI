@@ -2,6 +2,7 @@ import Foundation
 import Rainbow
 #if canImport(Darwin)
 import Darwin
+import Darwin.POSIX.termios
 #elseif canImport(Glibc)
 import Glibc
 #endif
@@ -42,39 +43,71 @@ public class SelectionUI {
     disableEcho()
     defer { enableEcho() }
     
-    // Clear screen and show UI
-    print("\u{001B}[2J\u{001B}[H")  // Clear screen and move to top
+    // Get terminal width
+    let terminalWidth = getTerminalWidth()
+    let maxLineWidth = min(terminalWidth - 4, 80)  // Leave margin, cap at 80 chars
+    
+    // Calculate total lines
+    let totalLines = 4 + options.count + 2  // 1 blank + title + sep + blank + options + blank + instructions
+    
+    // Main loop - redraw everything each time (simpler and more reliable)
+    var firstDraw = true
     
     while true {
-      // Move cursor to top
-      print("\u{001B}[H")
+      // Clear and redraw entire UI
+      if firstDraw {
+        // First draw - no clearing needed
+        firstDraw = false
+      } else {
+        // Move cursor up to top of UI
+        for _ in 0..<totalLines {
+          print("\u{001B}[1A", terminator: "")
+        }
+      }
       
-      // Print title
-      print("\n " + title.cyan.bold)
-      print(" " + String(repeating: "─", count: title.count + 10).lightBlack)
-      print("")
+      // Draw UI - clear each line before printing
+      print("\r\u{001B}[2K", terminator: "")
+      print("")  // Blank line
+      print("\r\u{001B}[2K " + title.cyan.bold)
+      let underlineLength = min(title.count + 10, maxLineWidth)
+      print("\r\u{001B}[2K " + String(repeating: "─", count: underlineLength).lightBlack)
+      print("\r\u{001B}[2K")  // Empty line after separator
       
       // Print options
       for (index, option) in options.enumerated() {
-        let prefix = index == selectedIndex ? " ▶ " : "   "
+        let prefix = index == selectedIndex ? " > " : "   "
         let label = option.label
-        let description = option.description.map { " - \($0)" } ?? ""
-        let selected = option.isSelected ? " ✓" : ""
+        let checkmark = option.isSelected ? " [x]" : ""
         
+        var line = "\(prefix)\(label)\(checkmark)"
+        
+        if let desc = option.description {
+          let availableSpace = maxLineWidth - line.count - 3
+          if availableSpace > 10 {
+            let truncatedDesc = desc.count > availableSpace ? 
+              String(desc.prefix(availableSpace - 3)) + "..." : desc
+            line += " - \(truncatedDesc)"
+          }
+        }
+        
+        if line.count > maxLineWidth {
+          line = String(line.prefix(maxLineWidth - 3)) + "..."
+        }
+        
+        print("\r\u{001B}[2K", terminator: "")
         if index == selectedIndex {
-          print("\(prefix)\(label)\(description)\(selected)".cyan.bold)
+          print(line.cyan.bold)
         } else {
-          print("\(prefix)\(label)\(description)\(selected)".lightBlack)
+          print(line.lightBlack)
         }
       }
       
       // Print instructions
-      print("")
-      print(" " + "↑/↓: Navigate  •  Enter: Select".lightBlack, terminator: "")
-      if allowCancel {
-        print("  •  Esc/q: Cancel".lightBlack, terminator: "")
-      }
-      print("")
+      print("\r\u{001B}[2K")  // Empty line before instructions
+      let instructions = " ↑/↓: Navigate  •  Enter: Select" + (allowCancel ? "  •  Esc/q: Cancel" : "")
+      let truncatedInstructions = instructions.count > maxLineWidth ? 
+        String(instructions.prefix(maxLineWidth)) : instructions
+      print("\r\u{001B}[2K" + truncatedInstructions.lightBlack)
       
       // Read key press
       guard let key = readKey() else { continue }
@@ -82,28 +115,41 @@ public class SelectionUI {
       switch key {
       case .up:
         selectedIndex = selectedIndex > 0 ? selectedIndex - 1 : options.count - 1
+        
       case .down:
         selectedIndex = selectedIndex < options.count - 1 ? selectedIndex + 1 : 0
+        
       case .enter:
-        clearSelectionUI(lineCount: options.count + 7)
+        // Clear UI before returning
+        for _ in 0..<totalLines {
+          print("\u{001B}[1A\u{001B}[2K", terminator: "")
+        }
         return options[selectedIndex].value
+        
       case .escape, .char("q"):
         if allowCancel {
-          clearSelectionUI(lineCount: options.count + 7)
+          // Clear UI before returning
+          for _ in 0..<totalLines {
+            print("\u{001B}[1A\u{001B}[2K", terminator: "")
+          }
           return nil
         }
+        
       default:
         break
       }
     }
   }
   
-  /// Clear the selection UI
-  private static func clearSelectionUI(lineCount: Int) {
-    // Move cursor up and clear lines
-    for _ in 0..<lineCount {
-      print("\u{001B}[1A\u{001B}[2K", terminator: "")
+  /// Get terminal width
+  private static func getTerminalWidth() -> Int {
+    #if canImport(Darwin) || canImport(Glibc)
+    var winsize = winsize()
+    if ioctl(STDOUT_FILENO, UInt(TIOCGWINSZ), &winsize) == 0 {
+      return Int(winsize.ws_col)
     }
+    #endif
+    return 80  // Default fallback
   }
   
   /// Key press types

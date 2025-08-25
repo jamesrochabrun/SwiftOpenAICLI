@@ -42,7 +42,7 @@ public class SlashCommandRegistry {
   }
   
   /// Parse and execute a command string
-  public func execute(_ input: String, context: CommandContext) async throws -> Bool {
+  public func execute(_ input: String, context: inout CommandContext) async throws -> Bool {
     let parsed = parseCommand(input)
     
     guard let command = getCommand(parsed.name) else {
@@ -58,7 +58,7 @@ public class SlashCommandRegistry {
     }
     
     // Execute command
-    return try await command.execute(arguments: parsed.arguments, context: context)
+    return try await command.execute(arguments: parsed.arguments, context: &context)
   }
   
   /// Parse a command string into name and arguments

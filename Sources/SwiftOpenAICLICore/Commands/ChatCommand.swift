@@ -135,7 +135,7 @@ public struct ChatCommand: AsyncParsableCommand {
             case .slashCommand(let command):
                 do {
                     // Execute slash command
-                    let shouldContinue = try await registry.execute(command, context: commandContext)
+                    let shouldContinue = try await registry.execute(command, context: &commandContext)
                     if !shouldContinue {
                         if !plain {
                             print("Goodbye!".yellow)

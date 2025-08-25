@@ -232,10 +232,27 @@ public struct AgentCommand: AsyncParsableCommand {
     if contextWindow <= 5000 {
       print("⚠️  DEBUG MODE: Using reduced context window for testing".yellow)
     }
-    print("Type 'exit' to quit, 'clear' to clear history, Ctrl+C to interrupt".lightBlack)
+    print("Type 'exit' to quit, 'clear' to clear history, '/help' for commands, Ctrl+C to interrupt".lightBlack)
     print("")
     
     var currentSessionId = UUID().uuidString
+    
+    // Initialize input processor and slash command registry
+    let inputProcessor = InputProcessor()
+    let registry = SlashCommandRegistry.shared
+    
+    // Create command context
+    var commandContext = CommandContext(
+      sessionId: currentSessionId,
+      currentModel: model,
+      temperature: temperature,
+      maxTokens: maxTokens
+    )
+    
+    // Keep track of current settings that might be changed by slash commands
+    var currentModel = model
+    var currentTemperature = temperature
+    var currentMaxTokens = maxTokens
     
     // Set up signal handler for graceful exit
     // Note: Can't capture toolExecutor in signal handler, so cleanup happens in normal exit paths
@@ -249,11 +266,8 @@ public struct AgentCommand: AsyncParsableCommand {
     }
     
     while true {
-      print("You: ".green, terminator: "")
-      fflush(stdout)
-      
-      // Handle EOF (Ctrl+D) and read input
-      guard let input = readLine() else {
+      // Use input processor for reading input with proper prompt
+      guard let input = inputProcessor.readInput() else {
         // EOF detected (Ctrl+D)
         print("\nCleaning up MCP connections...".yellow)
         await toolExecutor.cleanup()
@@ -261,68 +275,92 @@ public struct AgentCommand: AsyncParsableCommand {
         break
       }
       
-      // Trim whitespace and newlines
-      let trimmedInput = input.trimmingCharacters(in: .whitespacesAndNewlines)
+      // Process input through the input processor
+      let action = inputProcessor.processInput(input)
       
-      // Skip empty lines without re-prompting
-      guard !trimmedInput.isEmpty else {
+      switch action {
+      case .empty:
         continue
-      }
-      
-      // Check for exit command
-      if trimmedInput.lowercased() == "exit" || trimmedInput.lowercased() == "quit" {
+        
+      case .exit:
         print("Cleaning up MCP connections...".yellow)
         await toolExecutor.cleanup()
         print("Goodbye!".yellow)
         break
-      }
-      
-      // Check for clear command
-      if trimmedInput.lowercased() == "clear" {
+        
+      case .clearScreen:
         print("Conversation cleared.".yellow)
         SessionManager.shared.clearSession(currentSessionId)
         currentSessionId = UUID().uuidString
+        commandContext.sessionId = currentSessionId
         continue
-      }
-      
-      // Validate input length (prevent extremely long inputs)
-      guard trimmedInput.count <= 10000 else {
-        print("Error: Message too long (max 10000 characters)".red)
+        
+      case .continueMultiline:
         continue
-      }
-      
-      do {
-        // Always show tool events in interactive mode
-        let format = "interactive-stream"
-        // Note: We could pass timeout here if agentChatWithExecutor supported it
-        try await OpenAIService.shared.agentChatWithExecutor(
-          message: trimmedInput,
-          model: model,
-          toolExecutor: toolExecutor,
-          system: system,
-          temperature: temperature,
-          maxTokens: maxTokens,
-          outputFormat: format,
-          enabledTools: enabledTools,
-          verbose: modelVerbosity.rawValue,
-          reasoning: reasoning.rawValue,
-          sessionId: currentSessionId,
-          maxToolCalls: maxToolCalls
-        )
-        print()
-      } catch {
-        // Provide user-friendly error messages
-        if error.localizedDescription.contains("401") {
-          print("Error: Invalid API key. Please check your configuration.".red)
-        } else if error.localizedDescription.contains("429") {
-          print("Error: Rate limit exceeded. Please wait a moment and try again.".red)
-        } else if error.localizedDescription.contains("timeout") {
-          print("Error: Request timed out. Please try again.".red)
-        } else {
-          print("Error: \(error.localizedDescription)".red)
+        
+      case .cancelMultiline:
+        print("Multiline input cancelled".yellow)
+        continue
+        
+      case .slashCommand(let command):
+        do {
+          // Execute slash command
+          let shouldContinue = try await registry.execute(command, context: &commandContext)
+          if !shouldContinue {
+            print("Cleaning up MCP connections...".yellow)
+            await toolExecutor.cleanup()
+            print("Goodbye!".yellow)
+            break
+          }
+          // Update local variables if model changed
+          currentModel = commandContext.currentModel
+          currentTemperature = commandContext.temperature
+          currentMaxTokens = commandContext.maxTokens
+        } catch {
+          print("\(error.localizedDescription)".red)
         }
-        // Continue the session despite errors
-      }
+        continue
+        
+      case .message(let trimmedInput):
+        // Validate input length (prevent extremely long inputs)
+        guard trimmedInput.count <= 10000 else {
+          print("Error: Message too long (max 10000 characters)".red)
+          continue
+        }
+        
+        do {
+          // Always show tool events in interactive mode
+          let format = "interactive-stream"
+          // Note: We could pass timeout here if agentChatWithExecutor supported it
+          try await OpenAIService.shared.agentChatWithExecutor(
+            message: trimmedInput,
+            model: currentModel,
+            toolExecutor: toolExecutor,
+            system: system,
+            temperature: currentTemperature,
+            maxTokens: currentMaxTokens,
+            outputFormat: format,
+            enabledTools: enabledTools,
+            verbose: modelVerbosity.rawValue,
+            reasoning: reasoning.rawValue,
+            sessionId: currentSessionId,
+            maxToolCalls: maxToolCalls
+          )
+          print()
+        } catch {
+          // Provide user-friendly error messages
+          if error.localizedDescription.contains("401") {
+            print("Error: Invalid API key. Please check your configuration.".red)
+          } else if error.localizedDescription.contains("429") {
+            print("Error: Rate limit exceeded. Please wait a moment and try again.".red)
+          } else if error.localizedDescription.contains("timeout") {
+            print("Error: Request timed out. Please try again.".red)
+          } else {
+            print("Error: \(error.localizedDescription)".red)
+          }
+          // Continue the session despite errors
+        }
+      } // end switch
     }
     
     // Cleanup MCP connections when exiting

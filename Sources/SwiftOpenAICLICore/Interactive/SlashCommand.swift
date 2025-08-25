@@ -19,7 +19,7 @@ public protocol SlashCommand {
   ///   - arguments: The arguments passed to the command (if any)
   ///   - context: The execution context containing session info, current model, etc.
   /// - Returns: Whether to continue the interactive session (false to exit)
-  func execute(arguments: String?, context: CommandContext) async throws -> Bool
+  func execute(arguments: String?, context: inout CommandContext) async throws -> Bool
   
   /// Validate arguments before execution (optional)
   func validateArguments(_ arguments: String?) -> Result<Void, CommandError> 

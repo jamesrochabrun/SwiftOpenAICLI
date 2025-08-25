@@ -9,7 +9,7 @@ public struct HelpCommand: SlashCommand {
   
   public init() {}
   
-  public func execute(arguments: String?, context: CommandContext) async throws -> Bool {
+  public func execute(arguments: String?, context: inout CommandContext) async throws -> Bool {
     // If specific command requested, show its help
     if let commandName = arguments?.trimmingCharacters(in: .whitespaces), !commandName.isEmpty {
       SlashCommandRegistry.shared.printHelp(for: commandName)
