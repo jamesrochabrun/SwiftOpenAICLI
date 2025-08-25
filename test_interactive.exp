@@ -1,0 +1,14 @@
+#!/usr/bin/expect -f
+
+# Test interactive mode with tools
+set timeout 30
+
+spawn swift run swiftopenai agent --interactive --model gpt-4o-mini --tools bash,file --max-tool-calls 3
+
+expect "You: "
+send "Run the bash command 'echo Hello World'\r"
+
+expect "You: "
+send "/exit\r"
+
+expect eof

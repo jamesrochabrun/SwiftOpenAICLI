@@ -7,20 +7,45 @@ public class LoadingWordGenerator {
   
   private let service = OpenAIService.shared
   
-  // Fallback words by category
+  // Fallback words by category - expanded for variety
   private let fallbackWords: [String: [String]] = [
-    "default": ["Processing", "Working", "Computing", "Calculating", "Analyzing", "Crunching"],
-    "file": ["Rummaging", "Excavating", "Sifting", "Hunting", "Foraging", "Spelunking"],
-    "bash": ["Executing", "Launching", "Deploying", "Orchestrating", "Commanding", "Summoning"],
-    "edit": ["Tweaking", "Polishing", "Massaging", "Sculpting", "Refining", "Perfecting"],
-    "write": ["Scribing", "Composing", "Crafting", "Authoring", "Inscribing", "Penning"],
-    "search": ["Hunting", "Sleuthing", "Investigating", "Prowling", "Detecting", "Sniffing"],
-    "grep": ["Grepping", "Scanning", "Combing", "Trawling", "Dredging", "Filtering"],
-    "glob": ["Globbing", "Matching", "Wildcarding", "Expanding", "Collecting", "Gathering"],
-    "list": ["Listing", "Cataloging", "Enumerating", "Indexing", "Inventorying", "Surveying"],
-    "thinking": ["Pondering", "Cogitating", "Ruminating", "Contemplating", "Musing", "Deliberating"],
-    "mcp": ["Connecting", "Bridging", "Interfacing", "Linking", "Syncing", "Handshaking"],
-    "todo": ["Organizing", "Prioritizing", "Scheduling", "Tracking", "Managing", "Juggling"]
+    "default": ["Processing", "Working", "Computing", "Calculating", "Analyzing", "Crunching", 
+                "Churning", "Grinding", "Munching", "Digesting", "Deciphering", "Untangling",
+                "Parsing", "Compiling", "Assembling", "Brewing"],
+    "file": ["Rummaging", "Excavating", "Sifting", "Hunting", "Foraging", "Spelunking",
+             "Plundering", "Scavenging", "Unearthing", "Prospecting", "Ransacking", "Pillaging",
+             "Burrowing", "Tunneling", "Mining", "Harvesting"],
+    "bash": ["Executing", "Launching", "Deploying", "Orchestrating", "Commanding", "Summoning",
+             "Invoking", "Conjuring", "Marshaling", "Unleashing", "Dispatching", "Mobilizing",
+             "Activating", "Triggering", "Initiating", "Spawning"],
+    "edit": ["Tweaking", "Polishing", "Massaging", "Sculpting", "Refining", "Perfecting",
+             "Chiseling", "Grooming", "Buffing", "Honing", "Tuning", "Calibrating",
+             "Adjusting", "Finessing", "Modifying", "Reshaping"],
+    "write": ["Scribing", "Composing", "Crafting", "Authoring", "Inscribing", "Penning",
+              "Drafting", "Etching", "Engraving", "Transcribing", "Jotting", "Sketching",
+              "Formulating", "Articulating", "Chronicling", "Documenting"],
+    "search": ["Hunting", "Sleuthing", "Investigating", "Prowling", "Detecting", "Sniffing",
+               "Stalking", "Tracking", "Pursuing", "Scouring", "Probing", "Exploring",
+               "Snooping", "Ferreting", "Rummaging", "Questing"],
+    "grep": ["Grepping", "Scanning", "Combing", "Trawling", "Dredging", "Filtering",
+             "Sieving", "Straining", "Winnowing", "Culling", "Extracting", "Harvesting",
+             "Skimming", "Sweeping", "Raking", "Trolling"],
+    "glob": ["Globbing", "Matching", "Wildcarding", "Expanding", "Collecting", "Gathering",
+             "Accumulating", "Amassing", "Hoarding", "Stockpiling", "Clustering", "Bundling",
+             "Aggregating", "Consolidating", "Corralling", "Herding"],
+    "list": ["Listing", "Cataloging", "Enumerating", "Indexing", "Inventorying", "Surveying",
+             "Tabulating", "Itemizing", "Tallying", "Registering", "Documenting", "Charting",
+             "Mapping", "Auditing", "Reviewing", "Assessing"],
+    "thinking": ["Pondering", "Cogitating", "Ruminating", "Contemplating", "Musing", "Deliberating",
+                 "Brainstorming", "Noodling", "Mulling", "Meditating", "Reflecting", "Philosophizing",
+                 "Scheming", "Daydreaming", "Puzzling", "Wrestling", "Considering", "Evaluating",
+                 "Analyzing", "Processing", "Computing", "Ideating"],
+    "mcp": ["Connecting", "Bridging", "Interfacing", "Linking", "Syncing", "Handshaking",
+            "Pairing", "Bonding", "Meshing", "Integrating", "Networking", "Communicating",
+            "Negotiating", "Establishing", "Coupling", "Docking"],
+    "todo": ["Organizing", "Prioritizing", "Scheduling", "Tracking", "Managing", "Juggling",
+             "Coordinating", "Arranging", "Orchestrating", "Delegating", "Balancing", "Streamlining",
+             "Planning", "Structuring", "Categorizing", "Optimizing"]
   ]
   
   private init() {}
