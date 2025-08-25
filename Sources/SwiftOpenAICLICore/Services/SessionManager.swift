@@ -1,8 +1,8 @@
 import Foundation
 import SwiftOpenAI
 
-class SessionManager {
-  static let shared = SessionManager()
+public class SessionManager {
+  public static let shared = SessionManager()
   
   struct SessionData {
     var messages: [ChatCompletionParameters.Message]
@@ -41,7 +41,7 @@ class SessionManager {
     }
   }
   
-  func clearSession(_ sessionId: String) {
+  public func clearSession(_ sessionId: String) {
     queue.async(flags: .barrier) {
       self.sessions[sessionId] = SessionData(messages: [])
     }

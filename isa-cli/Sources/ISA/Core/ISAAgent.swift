@@ -109,76 +109,130 @@ class ISAAgent {
       showToolEvents: showToolEvents
     )
     
-    let currentSessionId = sessionId ?? UUID().uuidString
+    var currentSessionId = sessionId ?? UUID().uuidString
+    
+    // Initialize input processor and slash command registry
+    let inputProcessor = InputProcessor()
+    let registry = SlashCommandRegistry.shared
+    
+    // Create command context to track session state
+    var commandContext = CommandContext(
+      sessionId: currentSessionId,
+      currentModel: model,
+      temperature: temperature,
+      maxTokens: nil,
+      isAgentMode: true,
+      enabledTools: parseAllowedTools(allowedTools)
+    )
+    
+    // Keep track of current settings that might be changed by slash commands
+    var currentModel = model
+    var currentTemperature = temperature
+    var currentMaxTokens: Int? = nil
     
     while true {
-      // Show prompt
-      TerminalUI.showPrompt()
-      
-      guard let input = readLine() else { break }
-      let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
-      
-      // Handle special commands
-      if trimmed.lowercased() == "exit" || trimmed.lowercased() == "quit" {
+      // Use input processor for proper prompt handling
+      guard let input = inputProcessor.readInput() else {
+        // EOF detected (Ctrl+D)
+        await toolExecutor.cleanup()
         TerminalUI.showGoodbye()
         break
       }
       
-      if trimmed.lowercased() == "clear" {
+      // Process input through the input processor
+      let action = inputProcessor.processInput(input)
+      
+      switch action {
+      case .empty:
+        continue
+        
+      case .exit:
+        await toolExecutor.cleanup()
+        TerminalUI.showGoodbye()
+        break
+        
+      case .clearScreen:
         TerminalUI.clearScreen()
         TerminalUI.showISABanner()
+        SessionManager.shared.clearSession(currentSessionId)
+        currentSessionId = UUID().uuidString
+        commandContext.sessionId = currentSessionId
         continue
-      }
-      
-      if trimmed.lowercased() == "todos" {
-        TerminalUI.showTodoList(todoList)
+        
+      case .continueMultiline:
         continue
-      }
-      
-      if trimmed.lowercased() == "help" {
-        TerminalUI.showInteractiveHelp()
+        
+      case .cancelMultiline:
+        print("Multiline input cancelled".yellow)
         continue
-      }
-      
-      if trimmed.isEmpty {
-        continue
-      }
-      
-      // Process the message
-      do {
-        if planMode {
-          let plan = try await generatePlan(for: trimmed, system: system)
-          TerminalUI.showPlan(plan)
-          
-          guard TerminalUI.confirmPlan() else {
-            TerminalUI.showCancelled()
-            continue
+        
+      case .slashCommand(let command):
+        // Handle ISA-specific commands that aren't slash commands yet
+        if command == "/todos" {
+          TerminalUI.showTodoList(todoList)
+          continue
+        }
+        
+        do {
+          // Execute slash command through registry
+          let shouldContinue = try await registry.execute(command, context: &commandContext)
+          if !shouldContinue {
+            await toolExecutor.cleanup()
+            TerminalUI.showGoodbye()
+            break
           }
+          // Update local variables if model or settings changed
+          currentModel = commandContext.currentModel
+          currentTemperature = commandContext.temperature
+          currentMaxTokens = commandContext.maxTokens
+        } catch {
+          print("\(error.localizedDescription)".red)
+        }
+        continue
+        
+      case .message(let trimmedInput):
+        // Validate input length
+        guard trimmedInput.count <= 10000 else {
+          TerminalUI.showError("Message too long (max 10000 characters)")
+          continue
         }
         
-        try await openAIService.agentChatWithExecutor(
-          message: trimmed,
-          model: model,
-          toolExecutor: toolExecutor,
-          system: system,
-          temperature: temperature,
-          maxTokens: nil,
-          outputFormat: "plain",
-          enabledTools: parseAllowedTools(allowedTools),
-          verbose: getVerbosityLevel(),
-          reasoning: getReasoningLevel(),
-          sessionId: currentSessionId,
-          maxToolCalls: maxToolCalls
-        )
-        
-        if showTodos && !todoList.todos.isEmpty {
-          TerminalUI.showTodoSummary(todoList)
+        // Process the message
+        do {
+          if planMode {
+            let plan = try await generatePlan(for: trimmedInput, system: system)
+            TerminalUI.showPlan(plan)
+            
+            guard TerminalUI.confirmPlan() else {
+              TerminalUI.showCancelled()
+              continue
+            }
+          }
+          
+          try await openAIService.agentChatWithExecutor(
+            message: trimmedInput,
+            model: currentModel,  // Use potentially updated model
+            toolExecutor: toolExecutor,
+            system: system,
+            temperature: currentTemperature,  // Use potentially updated temperature
+            maxTokens: currentMaxTokens,  // Use potentially updated max tokens
+            outputFormat: "plain",
+            enabledTools: commandContext.enabledTools,  // Use context's enabled tools
+            verbose: getVerbosityLevel(),
+            reasoning: getReasoningLevel(),
+            sessionId: currentSessionId,
+            maxToolCalls: maxToolCalls
+          )
+          
+          if showTodos && !todoList.todos.isEmpty {
+            TerminalUI.showTodoSummary(todoList)
+          }
+          
+          print() // Empty line for readability
+          
+        } catch {
+          TerminalUI.showError("Error: \(error.localizedDescription)")
         }
-        
-        print() // Empty line for readability
-        
-      } catch {
-        TerminalUI.showError("Error: \(error.localizedDescription)")
       }
     }
   }

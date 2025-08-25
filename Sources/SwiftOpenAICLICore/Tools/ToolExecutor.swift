@@ -289,7 +289,7 @@ public class ToolExecutor {
     }
   }
   
-  func cleanup() async {
+  public func cleanup() async {
     // Disconnect all MCP servers gracefully
     if let mcpClient = mcpClient {
       await mcpClient.disconnectAll()
