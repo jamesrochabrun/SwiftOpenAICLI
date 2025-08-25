@@ -72,7 +72,7 @@ public class ISAGrepTool: CLITool {
           description: "Limit output to first N lines/entries, equivalent to \"| head -N\". Works across all output modes: content (limits output lines), files_with_matches (limits file paths), count (limits count entries). When unspecified, shows all results from ripgrep."
         )
       ],
-      required: ["pattern", "path", "glob", "type", "output_mode", "case_insensitive", "line_numbers", "after_context", "before_context", "context", "multiline", "head_limit"]
+      required: ["pattern"]  // Only pattern is required, everything else is optional
     )
   }
   

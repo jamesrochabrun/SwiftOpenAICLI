@@ -57,7 +57,7 @@ public class ISABashTool: CLITool {
           description: "Set to true to run this command in the background."
         )
       ],
-      required: ["command", "timeout", "description", "run_in_background"]
+      required: ["command"]  // Only command is required
     )
   }
   
