@@ -372,13 +372,14 @@ public final class OpenAIService {
       parameters.messages = conversationMessages
       numTurns += 1
       
-      // Debug logging
+      // Debug logging  
       if verbose == "high" || outputFormat == "plain" {
-        print("\n🔍 [DEBUG] Turn \(numTurns): Making API request with \(conversationMessages.count) messages".lightBlack)
+        print("\n🔍 Turn \(numTurns): Making API request with \(conversationMessages.count) messages".lightBlack)
         print("   Last message role: \(conversationMessages.last?.role ?? "none")".lightBlack)
         if let lastMessage = conversationMessages.last {
           if lastMessage.role == "tool" {
-            print("   Tool response being sent: \(String(describing: lastMessage.content).prefix(100))...".lightBlack)
+            let preview = String(describing: lastMessage.content).prefix(100)
+            print("   Tool response preview: \(preview)...".lightBlack)
           }
         }
       }
@@ -453,7 +454,7 @@ public final class OpenAIService {
       if let toolCalls = result.choices?.first?.message?.toolCalls, !toolCalls.isEmpty {
         // Debug logging
         if verbose == "high" || outputFormat == "plain" {
-          print("📞 [DEBUG] Received \(toolCalls.count) tool calls from LLM".lightBlack)
+          print("📞 Received \(toolCalls.count) tool call\(toolCalls.count == 1 ? "" : "s") from LLM".lightBlack)
           for (index, toolCall) in toolCalls.enumerated() {
             print("   Tool \(index + 1): \(toolCall.function.name ?? "unknown")".lightBlack)
           }
@@ -492,7 +493,13 @@ public final class OpenAIService {
               fflush(stdout)
             }
           } else if outputFormat == "interactive-stream" {
-            print("\n→ ".lightBlack + "Calling tool: ".lightBlack + toolName.yellow)
+            print("\n🔧 Executing tool: ".lightBlack + toolName.cyan)
+            
+            // Show arguments if verbose
+            if verbose == "high" {
+              let args = toolExecutor.truncateForDisplay(toolCall.function.arguments)
+              print("   Arguments: ".lightBlack + args.lightBlack)
+            }
             
             // Show animated loading indicator if enabled
             let config = ConfigurationManager.shared.getConfiguration()
@@ -521,9 +528,23 @@ public final class OpenAIService {
             
             indicator?.stop()
             
-            // Continue with result display
+            // Display result with better formatting
             let truncatedResult = toolExecutor.truncateForDisplay(result)
-            print("← ".lightBlack + "Result: ".lightBlack + truncatedResult.green)
+            
+            // Check if result has multiple lines
+            let resultLines = truncatedResult.components(separatedBy: "\n").filter { !$0.isEmpty }
+            if resultLines.count > 1 {
+              print("   ✓ ".green + "Result:".lightBlack)
+              for line in resultLines.prefix(10) {  // Show first 10 lines
+                print("      " + line)
+              }
+              if resultLines.count > 10 {
+                print("      " + "... (\(resultLines.count - 10) more lines)".lightBlack)
+              }
+            } else {
+              // Single line result
+              print("   ✓ ".green + truncatedResult)
+            }
             fflush(stdout)
             
             conversationMessages.append(.init(
@@ -556,8 +577,10 @@ public final class OpenAIService {
               fflush(stdout)
             }
           } else if outputFormat == "interactive-stream" {
+            // This case shouldn't be reached anymore since we display results above
+            // But keeping for safety
             let truncatedResult = toolExecutor.truncateForDisplay(result)
-            print("← ".lightBlack + "Result: ".lightBlack + truncatedResult.green)
+            print("   ✓ ".green + truncatedResult)
             fflush(stdout)
           }
           
@@ -569,9 +592,12 @@ public final class OpenAIService {
           
           // Debug logging
           if verbose == "high" || outputFormat == "plain" {
-            print("✅ [DEBUG] Added tool response to conversation (length: \(result.count) chars)".lightBlack)
+            print("✅ Added tool response to conversation (\(result.count) chars)".lightBlack)
             print("   Tool call ID: \(toolId)".lightBlack)
-            print("   Response preview: \(result.prefix(100))...".lightBlack)
+            // Only show preview for long responses
+            if result.count > 200 {
+              print("   Response preview: \(result.prefix(100))...".lightBlack)
+            }
           }
         }
         
@@ -579,7 +605,8 @@ public final class OpenAIService {
         
         // Debug logging - show loop status
         if verbose == "high" || outputFormat == "plain" {
-          print("🔄 [DEBUG] Loop status: toolCallCount=\(toolCallCount)/\(maxToolCalls), continuing...".lightBlack)
+          print("🔄 Loop status: toolCallCount=\(toolCallCount)/\(maxToolCalls), continuing...".lightBlack)
+          print("")  // Add spacing for readability
         }
       } else {
         // Final response
@@ -588,7 +615,7 @@ public final class OpenAIService {
           
           // Debug logging
           if verbose == "high" || outputFormat == "plain" {
-            print("🏁 [DEBUG] Received final response from LLM (no tool calls)".lightBlack)
+            print("🏁 Received final response from LLM (no tool calls)".lightBlack)
             print("   Response length: \(content.count) chars".lightBlack)
           }
           
