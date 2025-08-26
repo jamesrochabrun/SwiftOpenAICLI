@@ -492,6 +492,24 @@ public final class OpenAIService {
           indicator?.stop()
         }
         
+        let assistantMessage = result.choices?.first?.message
+        
+        // Show assistant's narration/reasoning if present
+        if outputFormat == "interactive-stream" {
+          if let content = assistantMessage?.content, !content.isEmpty {
+            // Display the assistant's explanation before tool execution
+            print("\rAssistant: ".cyan + content.lightBlack)
+            print() // Add newline before tool execution display
+          } else if toolCalls.count == 1 {
+            // For single tool call without narration, synthesize context with actual arguments
+            if let toolCall = toolCalls.first {
+              let context = synthesizeToolContext(toolCall: toolCall)
+              print("\rAssistant: ".cyan + context.lightBlack)
+              print()
+            }
+          }
+        }
+        
         // Debug logging
         if verbose == "high" || outputFormat == "plain" {
           print("📞 Received \(toolCalls.count) tool call\(toolCalls.count == 1 ? "" : "s") from LLM".lightBlack)
@@ -500,7 +518,7 @@ public final class OpenAIService {
           }
         }
         
-        let assistantMessage = result.choices?.first?.message
+        // Save to conversation history
         if let content = assistantMessage?.content {
           conversationMessages.append(.init(
             role: .assistant,
@@ -823,6 +841,128 @@ public final class OpenAIService {
       }
     } else if toolCallCount >= maxToolCalls && (outputFormat == "plain" || outputFormat == "interactive-stream") {
       print("\n⚠️  Maximum tool calls reached".yellow)
+    }
+  }
+  
+  // Helper function to generate context for tool calls with actual arguments
+  private func synthesizeToolContext(toolCall: ToolCall) -> String {
+    let toolName = toolCall.function.name ?? "tool"
+    let args = toolCall.function.arguments
+    
+    // Try to parse arguments for more specific context
+    if let data = args.data(using: .utf8),
+       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+      
+      // Generate specific messages based on tool and actual arguments
+      switch toolName {
+      case let name where name.contains("read"):
+        if let path = json["file_path"] as? String {
+          let displayPath = path.count > 60 ? "..." + String(path.suffix(57)) : path
+          return "Reading \(displayPath)"
+        }
+        
+      case let name where name.contains("write"):
+        if let path = json["file_path"] as? String {
+          let displayPath = path.count > 60 ? "..." + String(path.suffix(57)) : path
+          return "Writing to \(displayPath)"
+        }
+        
+      case let name where name.contains("edit"):
+        if let path = json["file_path"] as? String {
+          let displayPath = path.count > 60 ? "..." + String(path.suffix(57)) : path
+          return "Editing \(displayPath)"
+        }
+        
+      case let name where name.contains("grep") || name.contains("search"):
+        if let pattern = json["pattern"] as? String {
+          let displayPattern = pattern.count > 50 ? String(pattern.prefix(47)) + "..." : pattern
+          return "Searching for '\(displayPattern)'"
+        }
+        
+      case let name where name.contains("glob") || name.contains("find"):
+        if let pattern = json["pattern"] as? String {
+          return "Finding files matching: \(pattern)"
+        }
+        
+      case let name where name.contains("ls") || name.contains("list"):
+        if let path = json["path"] as? String {
+          let displayPath = path.count > 60 ? "..." + String(path.suffix(57)) : path
+          return "Listing \(displayPath)"
+        }
+        
+      case let name where name.contains("bash") || name.contains("shell"):
+        if let cmd = json["command"] as? String {
+          let displayCmd = cmd.count > 50 ? String(cmd.prefix(47)) + "..." : cmd
+          return "Running: \(displayCmd)"
+        }
+        
+      case let name where name.contains("todo"):
+        if let todos = json["todos"] as? [[String: Any]] {
+          return "Updating \(todos.count) task\(todos.count == 1 ? "" : "s")"
+        }
+        
+      case let name where name.contains("web"):
+        if let url = json["url"] as? String {
+          return "Fetching \(url)"
+        }
+        
+      default:
+        break
+      }
+    }
+    
+    // Fallback to simple context based on tool name only
+    switch toolName {
+    case let name where name.contains("read"):
+      return "Reading file..."
+    case let name where name.contains("write"):
+      return "Writing file..."
+    case let name where name.contains("edit"):
+      return "Editing file..."
+    case let name where name.contains("grep") || name.contains("search"):
+      return "Searching codebase..."
+    case let name where name.contains("glob") || name.contains("find"):
+      return "Finding files..."
+    case let name where name.contains("ls") || name.contains("list"):
+      return "Listing directory..."
+    case let name where name.contains("bash") || name.contains("shell"):
+      return "Executing command..."
+    case let name where name.contains("todo"):
+      return "Updating tasks..."
+    case let name where name.contains("web"):
+      return "Fetching content..."
+    case let name where name.contains("mcp"):
+      return "Calling tool..."
+    default:
+      return "Processing..."
+    }
+  }
+  
+  // Simple fallback context when we can't parse arguments
+  private func synthesizeSimpleContext(toolName: String) -> String {
+    switch toolName {
+    case let name where name.contains("read"):
+      return "Reading file..."
+    case let name where name.contains("write"):
+      return "Writing file..."
+    case let name where name.contains("edit"):
+      return "Editing file..."
+    case let name where name.contains("grep") || name.contains("search"):
+      return "Searching codebase..."
+    case let name where name.contains("glob") || name.contains("find"):
+      return "Finding files..."
+    case let name where name.contains("ls") || name.contains("list"):
+      return "Listing directory..."
+    case let name where name.contains("bash") || name.contains("shell"):
+      return "Executing command..."
+    case let name where name.contains("todo"):
+      return "Updating tasks..."
+    case let name where name.contains("web"):
+      return "Fetching content..."
+    case let name where name.contains("mcp"):
+      return "Calling tool..."
+    default:
+      return "Processing..."
     }
   }
 }
