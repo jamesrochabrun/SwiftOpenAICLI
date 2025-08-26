@@ -32,9 +32,9 @@ struct ISACommand: AsyncParsableCommand {
       - Important files and architecture
       - Custom instructions for ISA
     
-    Version: 1.0.0
+    Version: 1.1.0
     """,
-    version: "1.0.0"
+    version: "1.1.0"
   )
   
   @Argument(help: "The message to send to ISA")
