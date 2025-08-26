@@ -134,20 +134,24 @@ public class ISABashTool: CLITool {
     // Normal execution with timeout
     try process.run()
     
-    // Setup timeout
-    let timeoutWorkItem = DispatchWorkItem {
-      if process.isRunning {
+    // Setup timeout and wait asynchronously
+    let startTime = Date()
+    
+    // Wait for process to complete without blocking
+    while process.isRunning {
+      // Check for timeout
+      if Date().timeIntervalSince(startTime) * 1000 > Double(timeout) {
         process.terminate()
+        // Give process a moment to terminate cleanly
+        try await Task.sleep(nanoseconds: 100_000_000) // 100ms
+        if process.isRunning {
+          process.interrupt() // Force kill if still running
+        }
+        break
       }
+      // Small sleep to prevent busy waiting
+      try await Task.sleep(nanoseconds: 10_000_000) // 10ms
     }
-    
-    DispatchQueue.global().asyncAfter(
-      deadline: .now() + .milliseconds(Int(timeout)),
-      execute: timeoutWorkItem
-    )
-    
-    process.waitUntilExit()
-    timeoutWorkItem.cancel()
     
     // Read output
     let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()

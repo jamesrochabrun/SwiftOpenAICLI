@@ -240,7 +240,13 @@ class ISAAgent {
           print() // Empty line for readability
           
         } catch {
-          TerminalUI.showError("Error: \(error.localizedDescription)")
+          // Clear any pending input to prevent ^[ from appearing after ESC
+          inputProcessor.clearPendingInput()
+          
+          // Don't show error for cancellation - already shown "Interrupted by user"
+          if !(error is CancellationError) {
+            TerminalUI.showError("Error: \(error.localizedDescription)")
+          }
         }
       }
     }

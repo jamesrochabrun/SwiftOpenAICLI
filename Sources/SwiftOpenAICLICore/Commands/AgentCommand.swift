@@ -242,7 +242,7 @@ public struct AgentCommand: AsyncParsableCommand {
     if contextWindow <= 5000 {
       print("⚠️  DEBUG MODE: Using reduced context window for testing".yellow)
     }
-    print("Type 'exit' to quit, 'clear' to clear history, '/help' for commands, Ctrl+C to interrupt".lightBlack)
+    print("Type 'exit' to quit, 'clear' to reset, '/help' for commands, ESC to interrupt".lightBlack)
     print("")
     
     var currentSessionId = UUID().uuidString
@@ -361,8 +361,14 @@ public struct AgentCommand: AsyncParsableCommand {
           )
           print()
         } catch {
-          // Provide user-friendly error messages
-          if error.localizedDescription.contains("401") {
+          // Clear any pending input after interruption
+          inputProcessor.clearPendingInput()
+          
+          // If user interrupted (ESC), suppress generic error (message already shown)
+          if error is CancellationError {
+            // No-op: "Interrupted by user" has already been printed
+            // Don't show any error message
+          } else if error.localizedDescription.contains("401") {
             print("Error: Invalid API key. Please check your configuration.".red)
           } else if error.localizedDescription.contains("429") {
             print("Error: Rate limit exceeded. Please wait a moment and try again.".red)

@@ -97,6 +97,12 @@ public final class OpenAIService {
       parameters.reasoningEffort = reasoning
     }
     
+    // Start ESC monitoring
+    let escMonitor = ESCMonitor.shared
+    escMonitor.reset()
+    escMonitor.startMonitoring()
+    defer { escMonitor.stopMonitoring() }
+    
     if stream {
       if !plain {
         print("Assistant: ".cyan, terminator: "")
@@ -106,6 +112,12 @@ public final class OpenAIService {
       let stream = try await openAI.startStreamedChat(parameters: parameters)
       
       for try await result in stream {
+        // Check for ESC key cancellation
+        if escMonitor.wasCancelled() {
+          print("\n" + "Interrupted by user".yellow)
+          break
+        }
+        
         if let content = result.choices?.first?.delta?.content {
           print(content, terminator: "")
           fflush(stdout)
@@ -130,25 +142,47 @@ public final class OpenAIService {
         indicator = nil
       }
       
-      // Add timeout handling with Task
-      let result = try await withThrowingTaskGroup(of: ChatCompletionObject.self) { group in
-        group.addTask {
-          return try await openAI.startChat(parameters: parameters)
+      // Add timeout handling with Task and ESC cancellation
+      let result: ChatCompletionObject
+      do {
+        result = try await withThrowingTaskGroup(of: ChatCompletionObject.self) { group in
+          group.addTask {
+            return try await openAI.startChat(parameters: parameters)
+          }
+          
+          // Add ESC monitoring task
+          group.addTask {
+            while true {
+              if escMonitor.wasCancelled() {
+                throw CancellationError()
+              }
+              try await Task.sleep(nanoseconds: 25_000_000) // 25ms - check more frequently
+            }
+          }
+          
+          group.addTask {
+            // Timeout task - use provided timeout or default based on model
+            let timeoutSeconds = timeout > 0 ? timeout : (normalizedModel.lowercased().contains("gpt-5") ? 180 : 60)
+            try await Task.sleep(nanoseconds: UInt64(timeoutSeconds * 1_000_000_000))
+            throw OpenAIServiceError.timeout(seconds: timeoutSeconds)
+          }
+          
+          // Return the first completed task (either result or timeout)
+          if let result = try await group.next() {
+            group.cancelAll()
+            return result
+          }
+          throw OpenAIServiceError.timeout(seconds: timeout)
         }
-        
-        group.addTask {
-          // Timeout task - use provided timeout or default based on model
-          let timeoutSeconds = timeout > 0 ? timeout : (normalizedModel.lowercased().contains("gpt-5") ? 180 : 60)
-          try await Task.sleep(nanoseconds: UInt64(timeoutSeconds * 1_000_000_000))
-          throw OpenAIServiceError.timeout(seconds: timeoutSeconds)
-        }
-        
-        // Return the first completed task (either result or timeout)
-        if let result = try await group.next() {
-          group.cancelAll()
-          return result
-        }
-        throw OpenAIServiceError.timeout(seconds: timeout)
+      } catch is CancellationError {
+        // Handle ESC cancellation gracefully
+        indicator?.stop()
+        print("\n" + "Interrupted by user".yellow)
+        return  // Exit gracefully without throwing
+      } catch {
+        // Stop indicator on any error
+        indicator?.stop()
+        throw error
       }
       
       // Clear the loading indicator
@@ -233,6 +267,12 @@ public final class OpenAIService {
   public func agentChatWithExecutor(message: String, model: String, toolExecutor: ToolExecutor, system: String? = nil, temperature: Double = 1.0, maxTokens: Int? = nil, outputFormat: String = "plain", enabledTools: Set<String>?, verbose: String = "medium", reasoning: String = "medium", sessionId: String? = nil, timeout: Int = 60, maxToolCalls: Int = 10) async throws {
     let openAI = try getService()
     let outputHelper = OutputHelper(outputFormat: outputFormat)
+    
+    // Start ESC monitoring for agent
+    let escMonitor = ESCMonitor.shared
+    escMonitor.reset()
+    escMonitor.startMonitoring()
+    defer { escMonitor.stopMonitoring() }
     
     let normalizedModel = normalizeModelName(model)
     let isGPT5Model = normalizedModel.lowercased().contains("gpt-5")
@@ -327,9 +367,6 @@ public final class OpenAIService {
         print(jsonString)
         fflush(stdout)
       }
-    } else if outputFormat == "plain" || outputFormat == "interactive-stream" {
-      print("Assistant: ".cyan, terminator: "")
-      fflush(stdout)
     }
     
     var conversationMessages = messages
@@ -339,34 +376,6 @@ public final class OpenAIService {
     var numTurns = 0
     var finalResponse = ""
     
-    // Show initial thinking indicator for first response
-    let initialIndicator: LoadingIndicator?
-    if outputFormat == "interactive-stream" {
-      let config = ConfigurationManager.shared.getConfiguration()
-      let useAnimated = config.animatedLoading ?? true
-      if useAnimated {
-        // Use fallback word immediately - NO DELAY
-        let fallbackWord = LoadingWordGenerator.shared.getThinkingWordSync() // Sync version with random fallback
-        initialIndicator = LoadingIndicator(word: "("+fallbackWord+"...)", color: { $0.lightBlack })
-        initialIndicator?.start()
-        
-        // Fire-and-forget: Try to get AI word in background (won't delay response)
-        Task {
-          _ = await LoadingWordGenerator.shared.getThinkingWord(useAI: false, forceAI: true)
-          // We don't use it here, but it might cache for next time
-        }
-      } else {
-        print("(thinking...)".lightBlack, terminator: "")
-        fflush(stdout)
-        initialIndicator = nil
-      }
-    } else if outputFormat == "plain" {
-      print("(thinking...)".lightBlack, terminator: "")
-      fflush(stdout)
-      initialIndicator = nil
-    } else {
-      initialIndicator = nil
-    }
     
     while toolCallCount < maxToolCalls {
       parameters.messages = conversationMessages
@@ -384,12 +393,16 @@ public final class OpenAIService {
         }
       }
       
-      // Show loading indicator while waiting for assistant on subsequent turns
+      // Show loading indicator while waiting for assistant response
       let indicator: LoadingIndicator?
-      if outputFormat == "interactive-stream" && numTurns > 1 {
-        // Use fallback immediately for subsequent turns - NO DELAY
-        let fallbackWord = LoadingWordGenerator.shared.getThinkingWordSync() // Sync version
-        indicator = LoadingIndicator(word: fallbackWord, color: { $0.lightBlack })
+      if outputFormat == "interactive-stream" {
+        // Always use animated indicator for consistency
+        let fallbackWord = LoadingWordGenerator.shared.getThinkingWordSync()
+        if numTurns > 1 {
+          // After tools: add newline first for separation
+          print()
+        }
+        indicator = LoadingIndicator(word: "("+fallbackWord+"...)", color: { $0.lightBlack })
         indicator?.start()
         
         // Fire-and-forget: Try AI word in background
@@ -400,39 +413,58 @@ public final class OpenAIService {
         indicator = nil
       }
       
-      // Add timeout handling with Task
-      let result = try await withThrowingTaskGroup(of: ChatCompletionObject.self) { group in
-        group.addTask {
-          return try await openAI.startChat(parameters: parameters)
+      // Add timeout handling with Task and ESC cancellation
+      let result: ChatCompletionObject
+      do {
+        result = try await withThrowingTaskGroup(of: ChatCompletionObject.self) { group in
+          group.addTask {
+            return try await openAI.startChat(parameters: parameters)
+          }
+          
+          // Add ESC monitoring task
+          group.addTask {
+            while true {
+              if escMonitor.wasCancelled() {
+                throw CancellationError()
+              }
+              try await Task.sleep(nanoseconds: 25_000_000) // 25ms - check more frequently
+            }
+          }
+          
+          group.addTask {
+            // Timeout task - use provided timeout or default based on model
+            let timeoutSeconds = timeout > 0 ? timeout : (normalizedModel.lowercased().contains("gpt-5") ? 180 : 60)
+            try await Task.sleep(nanoseconds: UInt64(timeoutSeconds * 1_000_000_000))
+            throw OpenAIServiceError.timeout(seconds: timeoutSeconds)
+          }
+          
+          // Return the first completed task (either result or timeout)
+          if let result = try await group.next() {
+            group.cancelAll()
+            return result
+          }
+          throw OpenAIServiceError.timeout(seconds: timeout)
+        }
+      } catch is CancellationError {
+        // Handle ESC cancellation gracefully
+        indicator?.stop()
+        print("\n" + "Interrupted by user".yellow)
+        
+        // If this is the first turn with no tool calls yet, just break
+        if numTurns == 1 && toolCallCount == 0 {
+          break
         }
         
-        group.addTask {
-          // Timeout task - use provided timeout or default based on model
-          let timeoutSeconds = timeout > 0 ? timeout : (normalizedModel.lowercased().contains("gpt-5") ? 180 : 60)
-          try await Task.sleep(nanoseconds: UInt64(timeoutSeconds * 1_000_000_000))
-          throw OpenAIServiceError.timeout(seconds: timeoutSeconds)
-        }
-        
-        // Return the first completed task (either result or timeout)
-        if let result = try await group.next() {
-          group.cancelAll()
-          return result
-        }
-        throw OpenAIServiceError.timeout(seconds: timeout)
+        // If we have pending tool calls that need responses, send "Interrupted" message
+        // This shouldn't normally happen as tool calls are handled separately
+        break
+      } catch {
+        // Stop indicators on any error
+        indicator?.stop()
+        throw error
       }
       
-      // Stop loading indicator
-      indicator?.stop()
-      
-      // Stop initial indicator on first turn
-      if numTurns == 1 {
-        initialIndicator?.stop()
-      }
-      
-      if outputFormat == "plain" || outputFormat == "interactive-stream" {
-        print("\r", terminator: "")
-        fflush(stdout)
-      }
+      // Don't stop loading indicator here - wait until we're about to display content
       
       // Emit assistant message event for stream-json
       if outputFormat == "stream-json" {
@@ -452,6 +484,14 @@ public final class OpenAIService {
       }
       
       if let toolCalls = result.choices?.first?.message?.toolCalls, !toolCalls.isEmpty {
+        // Stop loading indicator before showing any output
+        if outputFormat == "interactive-stream" && indicator != nil {
+          // We're about to show tool execution, stop without clearing
+          indicator?.stopWithoutClearing()
+        } else {
+          indicator?.stop()
+        }
+        
         // Debug logging
         if verbose == "high" || outputFormat == "plain" {
           print("📞 Received \(toolCalls.count) tool call\(toolCalls.count == 1 ? "" : "s") from LLM".lightBlack)
@@ -493,7 +533,8 @@ public final class OpenAIService {
               fflush(stdout)
             }
           } else if outputFormat == "interactive-stream" {
-            print("\n🔧 Executing tool: ".lightBlack + toolName.cyan)
+            // Overwrite loading indicator with tool execution message
+            print("\r🔧 Executing tool: ".lightBlack + toolName.cyan)
             
             // Show arguments if verbose
             if verbose == "high" {
@@ -520,6 +561,13 @@ public final class OpenAIService {
               indicator = nil
             }
             
+            // Check for ESC before tool execution
+            if escMonitor.wasCancelled() {
+              indicator?.stop()
+              print("\n" + "Interrupted by user".yellow)
+              break
+            }
+            
             let result = try await toolExecutor.executeTool(
               name: toolName,
               arguments: toolCall.function.arguments,
@@ -527,6 +575,12 @@ public final class OpenAIService {
             )
             
             indicator?.stop()
+            
+            // Check for ESC after tool execution
+            if escMonitor.wasCancelled() {
+              print("\n" + "Interrupted by user".yellow)
+              break
+            }
             
             // Display result with better formatting
             let truncatedResult = toolExecutor.truncateForDisplay(result)
@@ -601,6 +655,12 @@ public final class OpenAIService {
           }
         }
         
+        // Check if we were interrupted during tool execution
+        if escMonitor.wasCancelled() {
+          // Exit the main loop if interrupted
+          break
+        }
+        
         toolCallCount += toolCalls.count
         
         // Debug logging - show loop status
@@ -609,24 +669,113 @@ public final class OpenAIService {
           print("")  // Add spacing for readability
         }
       } else {
-        // Final response
-        if let content = result.choices?.first?.message?.content {
-          finalResponse = content
+        // Final response - use streaming for interactive modes
+        if outputFormat == "plain" || outputFormat == "interactive-stream" {
+          // Stream the final response with ESC detection
+          // Note: newline already added when starting indicator for numTurns > 1
+          
+          // For non-streaming mode, show Assistant label immediately
+          if outputFormat != "interactive-stream" {
+            print("Assistant: ".cyan, terminator: "")
+          }
+          // For interactive-stream mode, the loading indicator was already started before API call
+          
+          var streamedContent = ""
+          var isFirstToken = true
           
           // Debug logging
-          if verbose == "high" || outputFormat == "plain" {
-            print("🏁 Received final response from LLM (no tool calls)".lightBlack)
-            print("   Response length: \(content.count) chars".lightBlack)
+          if verbose == "high" {
+            print("[DEBUG] Starting stream, indicator=\(indicator != nil), numTurns=\(numTurns)".lightBlack)
           }
           
-          // Add assistant's response to conversation
-          conversationMessages.append(.init(role: .assistant, content: .text(content)))
+          let stream = try await openAI.startStreamedChat(parameters: parameters)
           
-          if outputFormat == "plain" || outputFormat == "interactive-stream" {
-            if outputFormat == "interactive-stream" {
-              print() // Add newline after tool results
+          for try await streamResult in stream {
+            // Check for ESC key cancellation
+            if escMonitor.wasCancelled() {
+              indicator?.stop()
+              print("\n" + "Interrupted by user".yellow)
+              // Save what we got so far
+              if !streamedContent.isEmpty {
+                finalResponse = streamedContent
+                conversationMessages.append(.init(role: .assistant, content: .text(streamedContent)))
+              }
+              break
             }
-            print("Assistant: ".cyan + content)
+            
+            if let content = streamResult.choices?.first?.delta?.content {
+              // On first token, overwrite loading with Assistant label + token
+              if isFirstToken {
+                if outputFormat == "interactive-stream" {
+                  // Stop indicator first before any printing
+                  indicator?.stopWithoutClearing()
+                  
+                  // Single operation to overwrite loading with content
+                  let assistantLabel = "Assistant: ".cyan
+                  let clearSpaces = String(repeating: " ", count: 30)
+                  // Print with enough spaces to clear any loading text, then reposition
+                  print("\r\(assistantLabel)\(content)\(clearSpaces)\r\(assistantLabel)\(content)", terminator: "")
+                  fflush(stdout)
+                } else {
+                  indicator?.stop()  // Normal stop for non-interactive
+                  print(content, terminator: "")
+                  fflush(stdout)
+                }
+                isFirstToken = false
+                streamedContent += content
+              } else {
+                // Subsequent tokens just append
+                print(content, terminator: "")
+                fflush(stdout)
+                streamedContent += content
+              }
+            }
+          }
+          
+          // Handle completion based on whether we got content
+          if streamedContent.isEmpty {
+            // No content received - show error message
+            if outputFormat == "interactive-stream" {
+              indicator?.stop()
+              print("\rAssistant: [No response received - please try again]".yellow)
+            }
+            // Debug logging
+            if verbose == "high" {
+              print("\n[ERROR] Stream completed with no content".red)
+            }
+            // Save placeholder to maintain conversation flow
+            finalResponse = "[No response]"
+            conversationMessages.append(.init(role: .assistant, content: .text("[No response]")))
+          } else {
+            // Normal completion - add newline after content
+            print()
+            indicator?.stop()
+            
+            // Save the response
+            if !escMonitor.wasCancelled() {
+              finalResponse = streamedContent
+              conversationMessages.append(.init(role: .assistant, content: .text(streamedContent)))
+            }
+          }
+          
+          // Debug logging
+          if verbose == "high" {
+            print("\n🏁 Received final response from LLM (no tool calls)".lightBlack)
+            print("   Response length: \(streamedContent.count) chars".lightBlack)
+          }
+        } else {
+          // Non-streaming mode (json, stream-json)
+          if let content = result.choices?.first?.message?.content {
+            finalResponse = content
+            
+            // Debug logging
+            if verbose == "high" {
+              print("🏁 Received final response from LLM (no tool calls)".lightBlack)
+              print("   Response length: \(content.count) chars".lightBlack)
+            }
+            
+            // Add assistant's response to conversation
+            conversationMessages.append(.init(role: .assistant, content: .text(content)))
           }
         }
         break

@@ -18,7 +18,8 @@ public class LoadingIndicator {
     guard !isActive else { return }
     isActive = true
     
-    animationTask = Task { @MainActor in
+    animationTask = Task.detached { [weak self] in
+      guard let self = self else { return }
       var dots = 0
       let maxDots = 3
       
@@ -26,9 +27,12 @@ public class LoadingIndicator {
         // Build the display string with proper spacing
         let dotsString = String(repeating: ".", count: dots)
         let spaces = String(repeating: " ", count: maxDots - dots)
-        let display = "\r" + color(word + dotsString) + spaces + "  "
+        let display = "\r" + self.color(self.word + dotsString) + spaces + "  "
         
-        print(display, terminator: "")
+        // Use FileHandle for direct output to avoid MainActor
+        if let data = display.data(using: .utf8) {
+          FileHandle.standardOutput.write(data)
+        }
         fflush(stdout)
         
         dots = (dots + 1) % (maxDots + 1)
@@ -50,6 +54,16 @@ public class LoadingIndicator {
     // Clear the loading line
     print("\r" + String(repeating: " ", count: word.count + 10) + "\r", terminator: "")
     fflush(stdout)
+  }
+  
+  /// Stop the loading animation without clearing (line was already overwritten)
+  public func stopWithoutClearing() {
+    guard isActive else { return }
+    isActive = false
+    
+    animationTask?.cancel()
+    animationTask = nil
+    // Don't print anything - line was already overwritten
   }
   
   /// Stop animation but keep the final text visible

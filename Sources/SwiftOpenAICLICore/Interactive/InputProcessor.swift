@@ -14,6 +14,26 @@ public class InputProcessor {
   
   public init() {}
   
+  /// Clear any pending input from stdin buffer
+  public func clearPendingInput() {
+    #if os(macOS) || os(Linux)
+    // Flush the input buffer to clear any leftover characters
+    tcflush(STDIN_FILENO, TCIFLUSH)
+    
+    // Also do a non-blocking read to consume any remaining bytes
+    let oldFlags = fcntl(STDIN_FILENO, F_GETFL, 0)
+    _ = fcntl(STDIN_FILENO, F_SETFL, oldFlags | O_NONBLOCK)
+    
+    var dummy: Int8 = 0
+    while read(STDIN_FILENO, &dummy, 1) > 0 {
+      // Consume and discard any remaining input
+    }
+    
+    // Restore blocking mode
+    _ = fcntl(STDIN_FILENO, F_SETFL, oldFlags)
+    #endif
+  }
+  
   /// Process a line of input and determine action
   public func processInput(_ input: String) -> InputAction {
     // Check for EOF

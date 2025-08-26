@@ -167,7 +167,15 @@ public struct ChatCommand: AsyncParsableCommand {
                     )
                     print() // Add spacing
                 } catch {
-                    print("Error: \(error.localizedDescription)".red)
+                    // Clear any pending input after interruption
+                    inputProcessor.clearPendingInput()
+                    
+                    if error is CancellationError {
+                        // Suppress extra error line; OpenAIService already printed interruption
+                        // Don't show any error message
+                    } else {
+                        print("Error: \(error.localizedDescription)".red)
+                    }
                 }
             } // end switch
         }
