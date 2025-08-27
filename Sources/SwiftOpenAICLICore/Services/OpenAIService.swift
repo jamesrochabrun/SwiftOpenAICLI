@@ -373,7 +373,7 @@ public final class OpenAIService {
     var conversationMessages = messages
     var toolCallCount = 0
     // maxToolCalls is now passed as a parameter
-    var totalCost: Double = 0.0
+    let totalCost: Double = 0.0
     var numTurns = 0
     var finalResponse = ""
     

@@ -28,7 +28,7 @@ public struct ProviderPresets {
       name: "xAI (Grok)",
       baseURL: "https://api.x.ai/v1",
       defaultModel: "grok-code-fast-1",
-      availableModels: ["grok-4-latest", "grok-code-fast-1", "grok-2-latest"],
+      availableModels: ["grok-4-0709", "grok-3", "grok-3-mini", "grok-code-fast-1", "grok-2-image-1212"],
       envVarName: "XAI_API_KEY",
       description: "xAI's Grok models with function calling support"
     ),
