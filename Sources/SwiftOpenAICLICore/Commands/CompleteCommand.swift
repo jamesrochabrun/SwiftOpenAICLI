@@ -22,7 +22,7 @@ public struct CompleteCommand: AsyncParsableCommand {
     var maxTokens: Int = 100
     
     @Option(name: .long, help: "Temperature (0.0-2.0)")
-    var temperature: Double = 1.0
+    var temperature: Double?
     
     @Option(name: .long, help: "Number of completions to generate")
     var number: Int = 1
@@ -39,6 +39,9 @@ public struct CompleteCommand: AsyncParsableCommand {
     public mutating func run() async throws {
         print("Generating completion...".cyan)
         
+        // Use configured temperature if not specified
+        let effectiveTemperature = temperature ?? ConfigurationManager.shared.getConfiguration().temperature
+        
         do {
             for i in 0..<number {
                 if number > 1 {
@@ -48,7 +51,7 @@ public struct CompleteCommand: AsyncParsableCommand {
                 try await OpenAIService.shared.chat(
                     message: prompt,
                     model: model,
-                    temperature: temperature,
+                    temperature: effectiveTemperature,
                     maxTokens: maxTokens,
                     stream: false,
                     plain: false,

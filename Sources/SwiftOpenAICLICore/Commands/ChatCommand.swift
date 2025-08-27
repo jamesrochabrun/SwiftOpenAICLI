@@ -31,7 +31,7 @@ public struct ChatCommand: AsyncParsableCommand {
     var system: String?
     
     @Option(name: .long, help: "Temperature (0.0-2.0)")
-    var temperature: Double = 1.0
+    var temperature: Double?
     
     @Option(name: .long, help: "Maximum tokens to generate")
     var maxTokens: Int?
@@ -48,6 +48,7 @@ public struct ChatCommand: AsyncParsableCommand {
     public mutating func run() async throws {
         // Use configured default model if not specified
         let effectiveModel = model ?? ConfigurationManager.shared.defaultModel
+        let effectiveTemperature = temperature ?? ConfigurationManager.shared.getConfiguration().temperature
         
         if interactive {
             try await runInteractiveMode()
@@ -56,7 +57,7 @@ public struct ChatCommand: AsyncParsableCommand {
                 message: message,
                 model: effectiveModel,
                 system: system,
-                temperature: temperature,
+                temperature: effectiveTemperature,
                 maxTokens: maxTokens,
                 stream: !noStream,
                 plain: plain,
@@ -76,7 +77,7 @@ public struct ChatCommand: AsyncParsableCommand {
         
         // Create local mutable copies - use configured default if not specified
         var currentModel = model ?? ConfigurationManager.shared.defaultModel
-        var currentTemperature = temperature
+        var currentTemperature = temperature ?? ConfigurationManager.shared.getConfiguration().temperature
         var currentMaxTokens = maxTokens
         
         // Create session ID and command context

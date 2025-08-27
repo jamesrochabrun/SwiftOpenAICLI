@@ -27,7 +27,7 @@ public struct AgentCommand: AsyncParsableCommand {
   var system: String?
   
   @Option(name: .long, help: "Temperature (0.0-2.0)")
-  var temperature: Double = 1.0
+  var temperature: Double?
   
   @Option(name: .long, help: "Maximum tokens to generate")
   var maxTokens: Int?
@@ -80,6 +80,7 @@ public struct AgentCommand: AsyncParsableCommand {
   public mutating func run() async throws {
     // Use configured default model if not specified
     let effectiveModel = model ?? ConfigurationManager.shared.defaultModel
+    let effectiveTemperature = temperature ?? ConfigurationManager.shared.getConfiguration().temperature
     
     let mcpConfigs = try loadMCPServers()
     
@@ -116,7 +117,7 @@ public struct AgentCommand: AsyncParsableCommand {
         message: message,
         model: effectiveModel,
         system: system,
-        temperature: temperature,
+        temperature: effectiveTemperature,
         maxTokens: maxTokens,
         outputFormat: outputFormat,
         enabledTools: enabledTools,
@@ -212,8 +213,9 @@ public struct AgentCommand: AsyncParsableCommand {
       throw ExitCode.failure
     }
     
-    // Use configured default model if not specified
+    // Use configured default model and temperature if not specified
     let effectiveModel = model ?? ConfigurationManager.shared.defaultModel
+    let effectiveTemperature = temperature ?? ConfigurationManager.shared.getConfiguration().temperature
     
     // Create persistent ToolExecutor for the session
     // In interactive mode, always show MCP status and never use stderr
@@ -261,14 +263,14 @@ public struct AgentCommand: AsyncParsableCommand {
     var commandContext = CommandContext(
       sessionId: currentSessionId,
       currentModel: effectiveModel,
-      temperature: temperature,
+      temperature: effectiveTemperature,
       maxTokens: maxTokens,
       maxToolCalls: effectiveMaxToolCalls
     )
     
     // Keep track of current settings that might be changed by slash commands
     var currentModel = effectiveModel
-    var currentTemperature = temperature
+    var currentTemperature = effectiveTemperature
     var currentMaxTokens = maxTokens
     var currentMaxToolCalls = effectiveMaxToolCalls
     

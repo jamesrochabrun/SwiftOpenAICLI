@@ -16,11 +16,15 @@ A command-line interface for interacting with OpenAI's API, built with Swift.
 - 🤖 **Agent Mode** - AI agent with MCP tool integration and conversation memory
 - 🔌 **MCP Integration** - Connect to GitHub, databases, Slack, and more via Model Context Protocol
 - 🚀 **GPT-5 Support** - Advanced reasoning and verbosity controls for GPT-5 models
+- 🌐 **Multi-Provider Support** - Works with OpenAI, xAI (Grok), Groq, DeepSeek, OpenRouter, and more
+- 🎯 **Provider-Aware Models** - Automatically shows appropriate models for your configured provider
+- 🐞 **Debug Mode** - Toggle HTTP status codes and headers visibility for troubleshooting
+- 🌡️ **Temperature Control** - Configure default temperature in settings, override per command
 - 🖼️ **Image Generation** - Generate images with AI models
-- 📊 **Models** - List and filter available models
+- 📊 **Models** - List and filter available models with custom model support
 - 🔤 **Completions** - Generate text completions
 - 🧮 **Embeddings** - Generate text embeddings
-- ⚙️ **Configuration** - Manage API keys and settings
+- ⚙️ **Configuration** - Interactive setup wizard and fine-grained settings control
 
 ## Installation
 
@@ -196,13 +200,39 @@ Note: Provider-specific environment variables take precedence over config file w
 
 | Provider | Base URL | Example Models |
 |----------|----------|----------------|
-| OpenAI | (default) | gpt-4o, gpt-5-mini |
-| xAI/Grok | https://api.x.ai/v1 | grok-4-latest, grok-code-fast-1 |
-| Groq | https://api.groq.com/openai/v1 | llama-3.3-70b-versatile |
-| DeepSeek | https://api.deepseek.com | deepseek-chat |
-| OpenRouter | https://openrouter.ai/api/v1 | anthropic/claude-3.5-sonnet |
+| OpenAI | (default) | gpt-4o, gpt-5, gpt-5-mini, o1-preview |
+| xAI/Grok | https://api.x.ai/v1 | grok-4-0709, grok-3, grok-code-fast-1 |
+| Groq | https://api.groq.com/openai/v1 | llama-3.3-70b-versatile, mixtral-8x7b |
+| DeepSeek | https://api.deepseek.com | deepseek-chat, deepseek-coder |
+| OpenRouter | https://openrouter.ai/api/v1 | anthropic/claude-3.5-sonnet, gemini-pro |
+| Anthropic* | https://openrouter.ai/api/v1 | claude-3.5-sonnet, claude-3.5-haiku |
+| Custom | (your URL) | Any OpenAI-compatible model |
 
-### View Configuration
+*Via OpenRouter for OpenAI-compatible API
+
+### Configuration Options
+
+#### Temperature
+Controls the randomness of AI responses (0.0 = deterministic, 2.0 = very creative)
+```bash
+# Set default temperature
+swiftopenai config set temperature 0.8
+
+# Override per command
+swiftopenai chat "Write a poem" --temperature 1.5
+```
+
+#### Debug Mode
+Shows HTTP status codes and headers for API calls
+```bash
+# Enable debug mode
+swiftopenai config set debug true
+
+# Disable debug mode
+swiftopenai config set debug false
+```
+
+#### View Configuration
 ```bash
 # List all settings
 swiftopenai config list
@@ -245,6 +275,25 @@ swiftopenai chat "Explain this concept" \
 # With system prompt
 swiftopenai chat "How do I sort an array?" \
   --system "You are a helpful assistant"
+```
+
+#### Provider Examples
+
+```bash
+# Using xAI (Grok)
+swiftopenai config set provider xai
+swiftopenai chat "Explain relativity" --model grok-4-0709
+
+# Using Groq with Llama
+swiftopenai config set provider groq
+swiftopenai chat "Write Python code" --model llama-3.3-70b-versatile
+
+# Using DeepSeek for coding
+swiftopenai config set provider deepseek
+swiftopenai chat "Debug this function" --model deepseek-coder
+
+# Custom model with any provider
+swiftopenai chat "Hello" --model my-custom-model-v2
 ```
 
 ### Agent Mode 🤖
@@ -320,8 +369,9 @@ swiftopenai agent --interactive --model gpt-5 --show-tool-events
 - **Context Warnings** - Shows capacity usage (e.g., "💭 85% capacity (7% until auto-compacting)")
 - **Slash Commands**:
   - `/config` - View and manage configuration
-  - `/config setup` - Interactive provider setup
-  - `/models` - List available models
+  - `/config setup` - Interactive provider setup wizard
+  - `/models` - List provider-specific models with custom option
+  - `/models <name>` - Set any model directly (e.g., `/models grok-4-0709`)
   - `/help` - Show available commands
 - **Control Commands**:
   - `clear` - Reset conversation history
@@ -355,6 +405,20 @@ You: /config temperature 0.5
 
 You: /config setup
 [Interactive provider setup wizard launches...]
+
+You: /models
+Select Model
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ > grok-4-0709 - Grok-4 • Language model
+   grok-3 - Grok-3 • General purpose
+   grok-code-fast-1 - Fast code generation • Optimized [x]
+   Custom model... - Enter a custom model name
+
+[↑/↓ to navigate, Enter to select, ESC to cancel]
+
+You: /models grok-2-vision-1212
+✅ Model changed to: grok-2-vision-1212
+   Using custom model
 ```
 
 #### Session Management

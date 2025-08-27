@@ -47,7 +47,7 @@ struct ISACommand: AsyncParsableCommand {
   var system: String?
   
   @Option(name: .long, help: "Temperature (0.0-2.0)")
-  var temperature: Double = 1.0
+  var temperature: Double?
   
   @Option(name: .long, help: "Maximum tokens to generate")
   var maxTokens: Int?
@@ -97,13 +97,14 @@ struct ISACommand: AsyncParsableCommand {
       TerminalUI.showISABanner()
     }
     
-    // Use configured default model if not specified
+    // Use configured default model and temperature if not specified
     let effectiveModel = model ?? ConfigurationManager.shared.defaultModel
+    let effectiveTemperature = temperature ?? ConfigurationManager.shared.getConfiguration().temperature
     
     // Create ISA agent with enhanced capabilities
     let agent = try ISAAgent(
       model: effectiveModel,
-      temperature: temperature,
+      temperature: effectiveTemperature,
       verbose: verbose,
       planMode: planMode,
       showTodos: showTodos
