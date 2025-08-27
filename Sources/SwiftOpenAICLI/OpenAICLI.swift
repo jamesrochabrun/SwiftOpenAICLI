@@ -156,7 +156,8 @@ struct OpenAICLI: AsyncParsableCommand {
       SwiftOpenAICLICore.ModelsCommand.self,
       SwiftOpenAICLICore.CompleteCommand.self,
       SwiftOpenAICLICore.EmbedCommand.self,
-      SwiftOpenAICLICore.ConfigCommand.self
+      SwiftOpenAICLICore.ConfigCommand.self,
+      SwiftOpenAICLICore.MarkdownCommand.self
     ],
     defaultSubcommand: SwiftOpenAICLICore.ChatCommand.self
   )

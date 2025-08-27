@@ -601,11 +601,16 @@ public final class OpenAIService {
               break
             }
             
-            // Display result with better formatting
+            // Display result with conditional markdown rendering
             let truncatedResult = toolExecutor.truncateForDisplay(result)
             
+            // Apply markdown rendering only if the tool and content benefit from it
+            let renderedResult = shouldRenderMarkdown(toolName: toolName, result: truncatedResult) 
+                ? MarkdownHelper.renderIfNeeded(truncatedResult)
+                : truncatedResult
+            
             // Check if result has multiple lines
-            let resultLines = truncatedResult.components(separatedBy: "\n").filter { !$0.isEmpty }
+            let resultLines = renderedResult.components(separatedBy: "\n").filter { !$0.isEmpty }
             if resultLines.count > 1 {
               print("   ✓ ".green + "Result:".lightBlack)
               for line in resultLines.prefix(10) {  // Show first 10 lines
@@ -616,7 +621,7 @@ public final class OpenAIService {
               }
             } else {
               // Single line result
-              print("   ✓ ".green + truncatedResult)
+              print("   ✓ ".green + renderedResult)
             }
             fflush(stdout)
             
@@ -651,9 +656,12 @@ public final class OpenAIService {
             }
           } else if outputFormat == "interactive-stream" {
             // This case shouldn't be reached anymore since we display results above
-            // But keeping for safety
+            // But keeping for safety with conditional markdown rendering
             let truncatedResult = toolExecutor.truncateForDisplay(result)
-            print("   ✓ ".green + truncatedResult)
+            let renderedResult = shouldRenderMarkdown(toolName: toolName, result: truncatedResult)
+                ? MarkdownHelper.renderIfNeeded(truncatedResult)
+                : truncatedResult
+            print("   ✓ ".green + renderedResult)
             fflush(stdout)
           }
           
@@ -709,16 +717,11 @@ public final class OpenAIService {
           
           let stream = try await openAI.startStreamedChat(parameters: parameters)
           
+          // Stream the response
           for try await streamResult in stream {
-            // Check for ESC key cancellation
+            // Check for ESC key cancellation periodically
             if escMonitor.wasCancelled() {
-              indicator?.stop()
-              print("\n" + "Interrupted by user".yellow)
-              // Save what we got so far
-              if !streamedContent.isEmpty {
-                finalResponse = streamedContent
-                conversationMessages.append(.init(role: .assistant, content: .text(streamedContent)))
-              }
+              print("\n⚠️  Request cancelled by user".yellow)
               break
             }
             
@@ -780,7 +783,7 @@ public final class OpenAIService {
           // Debug logging
           if verbose == "high" {
             print("\n🏁 Received final response from LLM (no tool calls)".lightBlack)
-            print("   Response length: \(streamedContent.count) chars".lightBlack)
+            print("   Response length: \(finalResponse.count) chars".lightBlack)
           }
         } else {
           // Non-streaming mode (json, stream-json)
@@ -966,6 +969,49 @@ public final class OpenAIService {
       return "Processing..."
     }
   }
+  
+  // MARK: - Smart Markdown Rendering for Tool Results
+  
+  private func shouldRenderMarkdown(toolName: String, result: String) -> Bool {
+    // Only apply markdown to tools that benefit from it
+    switch toolName {
+    case "isa__read":
+      // Reading files - check if it looks like code by file extension patterns or content
+      return containsCodePatterns(result)
+    case "isa__bash", "isa__grep", "isa__ls", "isa__glob", "isa__edit", "isa__write":
+      // Command outputs, file listings, search results - keep as plain text
+      return false
+    default:
+      // Unknown tools - check content heuristically
+      return MarkdownHelper.containsMarkdown(result)
+    }
+  }
+  
+  private func containsCodePatterns(_ content: String) -> Bool {
+    // Check for common code patterns
+    let codePatterns = [
+      "func ", "class ", "struct ", "enum ", "import ",  // Swift
+      "def ", "class ", "import ", "from ",              // Python
+      "function", "const ", "let ", "var ",              // JavaScript
+      "public ", "private ", "protected ",               // Java/C#
+      "#include", "int ", "void ", "return ",            // C/C++
+      "{", "}", "()", "[]", "//", "/*", "*/"           // General code symbols
+    ]
+    
+    let lines = content.split(separator: "\n", maxSplits: 20) // Check first 20 lines
+    var codeLineCount = 0
+    
+    for line in lines {
+      let lineStr = String(line).trimmingCharacters(in: .whitespaces)
+      if codePatterns.contains(where: { lineStr.contains($0) }) {
+        codeLineCount += 1
+      }
+    }
+    
+    // If more than 30% of lines contain code patterns, treat as code
+    return lines.count > 3 && Double(codeLineCount) / Double(lines.count) > 0.3
+  }
+  
 }
 
 enum OpenAIServiceError: LocalizedError {
