@@ -16,7 +16,7 @@ public struct ChatCommand: AsyncParsableCommand {
     var message: String?
     
     @Option(name: [.short, .long], help: "The model to use")
-    var model: String = "gpt-4o"
+    var model: String?
     
     @Flag(name: [.short, .long], help: "Interactive chat mode")
     var interactive = false
@@ -46,12 +46,15 @@ public struct ChatCommand: AsyncParsableCommand {
     var reasoning: ReasoningEffort = .medium
     
     public mutating func run() async throws {
+        // Use configured default model if not specified
+        let effectiveModel = model ?? ConfigurationManager.shared.defaultModel
+        
         if interactive {
             try await runInteractiveMode()
         } else if let message = message {
             try await OpenAIService.shared.chat(
                 message: message,
-                model: model,
+                model: effectiveModel,
                 system: system,
                 temperature: temperature,
                 maxTokens: maxTokens,
@@ -71,8 +74,8 @@ public struct ChatCommand: AsyncParsableCommand {
         let inputProcessor = InputProcessor()
         let registry = SlashCommandRegistry.shared
         
-        // Create local mutable copies
-        var currentModel = model
+        // Create local mutable copies - use configured default if not specified
+        var currentModel = model ?? ConfigurationManager.shared.defaultModel
         var currentTemperature = temperature
         var currentMaxTokens = maxTokens
         
@@ -86,7 +89,7 @@ public struct ChatCommand: AsyncParsableCommand {
             isAgentMode: false
         )
         if !plain {
-            print("🤖 OpenAI Chat (\(model))".cyan)
+            print("🤖 OpenAI Chat (\(currentModel))".cyan)
             print("Type 'exit' to quit, 'clear' to clear history".lightBlack)
             print("")
         }

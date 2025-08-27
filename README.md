@@ -142,16 +142,73 @@ swiftopenai --version
 
 ## Configuration
 
-Set your OpenAI API key using one of these methods:
+### Quick Setup (Recommended)
 
-### Environment Variable
+Use the interactive configuration setup:
+
+#### From Command Line
 ```bash
-export OPENAI_API_KEY=sk-...
+swiftopenai config setup
 ```
 
-### CLI Configuration
+#### From Interactive Mode
 ```bash
+# In chat or agent mode
+You: /config setup
+
+# In ISA
+isa
+You: /config setup
+```
+
+Both methods launch the same interactive wizard that guides you through:
+- Selecting your AI provider (OpenAI, xAI/Grok, Groq, DeepSeek, etc.)
+- Entering your API key
+- Choosing the default model
+- Configuring debug mode (show/hide HTTP status codes)
+- Setting up the API endpoint (if needed)
+
+### Manual Configuration
+
+#### Set API Key
+```bash
+# For OpenAI (default)
 swiftopenai config set api-key sk-...
+
+# For other providers (set provider first)
+swiftopenai config set provider xai
+swiftopenai config set api-key xai-...
+swiftopenai config set base-url https://api.x.ai/v1
+```
+
+#### Environment Variables
+The CLI respects provider-specific environment variables:
+- **OpenAI**: `OPENAI_API_KEY`
+- **xAI/Grok**: `XAI_API_KEY`
+- **Groq**: `GROQ_API_KEY`
+- **DeepSeek**: `DEEPSEEK_API_KEY`
+- **Anthropic**: `ANTHROPIC_API_KEY`
+- **OpenRouter**: `OPENROUTER_API_KEY`
+
+Note: Provider-specific environment variables take precedence over config file when the corresponding provider is selected.
+
+### Supported Providers
+
+| Provider | Base URL | Example Models |
+|----------|----------|----------------|
+| OpenAI | (default) | gpt-4o, gpt-5-mini |
+| xAI/Grok | https://api.x.ai/v1 | grok-4-latest, grok-code-fast-1 |
+| Groq | https://api.groq.com/openai/v1 | llama-3.3-70b-versatile |
+| DeepSeek | https://api.deepseek.com | deepseek-chat |
+| OpenRouter | https://openrouter.ai/api/v1 | anthropic/claude-3.5-sonnet |
+
+### View Configuration
+```bash
+# List all settings
+swiftopenai config list
+
+# Get specific setting
+swiftopenai config get default-model
 ```
 
 ## Usage
@@ -261,11 +318,44 @@ swiftopenai agent --interactive --model gpt-5 --show-tool-events
 - **Conversation Memory** - Maintains context within session
 - **Auto-Compaction** - Automatically summarizes long conversations at 92% capacity
 - **Context Warnings** - Shows capacity usage (e.g., "💭 85% capacity (7% until auto-compacting)")
-- **Commands**:
+- **Slash Commands**:
+  - `/config` - View and manage configuration
+  - `/config setup` - Interactive provider setup
+  - `/models` - List available models
+  - `/help` - Show available commands
+- **Control Commands**:
   - `clear` - Reset conversation history
   - `exit` or `quit` - Exit interactive mode
   - `Ctrl+C` - Interrupt and exit
   - `Ctrl+D` - EOF exit
+
+##### Interactive Configuration Example
+
+```bash
+$ swiftopenai chat --interactive
+🤖 OpenAI Chat (gpt-4o)
+Type 'exit' to quit, 'clear' to clear history
+
+You: /config
+⚙️  Current Configuration
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• api-key:        sk-...xxxx
+• default-model:  gpt-4o
+• temperature:    1.0
+• max-tokens:     (default)
+• animated-loading: true
+• provider:       openai
+• debug:          disabled
+
+💡 Usage: /config <key> <value>
+   Example: /config temperature 0.7
+
+You: /config temperature 0.5
+✅ Set temperature = 0.5
+
+You: /config setup
+[Interactive provider setup wizard launches...]
+```
 
 #### Session Management
 
@@ -487,6 +577,8 @@ ISA supports interactive slash commands for quick actions:
 - `/clear` - Clear conversation history and reset context
 - `/models` - List available AI models
 - `/config` - Display current configuration
+- `/config <key> <value>` - Set a configuration value
+- `/config setup` - Interactive provider configuration
 - `/exit` or `/quit` - Exit interactive mode
 
 ##### Using Slash Commands
@@ -503,12 +595,42 @@ You: /models
 • gpt-3.5-turbo
 
 You: /config
-🔧 Current Configuration
-━━━━━━━━━━━━━━━━━━━━━━━━
-• Model: gpt-5
-• Temperature: 1.0
-• API Key: sk-...configured
-• MCP Servers: github, filesystem
+⚙️  Current Configuration
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• api-key:        sk-...configured
+• default-model:  gpt-5
+• temperature:    1.0
+• max-tokens:     (default)
+• max-tool-calls: 20
+• animated-loading: true
+• provider:       openai
+• debug:          disabled
+
+💡 Usage: /config <key> <value>
+   Example: /config temperature 0.7
+
+You: /config setup
+🚀 Configuration Setup
+━━━━━━━━━━━━━━━━━━━━━
+
+Available providers:
+1. OpenAI (GPT-4, GPT-3.5)
+2. xAI (Grok)
+3. Groq (Fast inference)
+4. Anthropic (Claude)
+5. DeepSeek
+6. OpenRouter
+7. Custom Provider
+
+Select a provider (1-7): 2
+✓ Selected: xAI (Grok)
+
+Enter your API key for xAI: xai-...
+Use default model 'grok-code-fast-1'? (Y/n): y
+Enable debug mode? (y/N): n
+
+✅ Configuration complete!
+Your settings updated in ISA session.
 ```
 
 #### Context Files (isa.md)

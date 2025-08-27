@@ -339,6 +339,7 @@ public final class OpenAIService {
     var parameters = ChatCompletionParameters(
       messages: messages,
       model: .custom(normalizedModel),
+      toolChoice: tools.isEmpty ? nil : .auto,
       tools: tools.isEmpty ? nil : tools,
       maxTokens: maxTokens,
       temperature: temperature

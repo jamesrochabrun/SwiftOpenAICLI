@@ -55,10 +55,14 @@ public class LoadingWordGenerator {
     // Determine category from tool name
     let category = categorizeToolAsync(toolName)
     
-    // Force AI mode for agent/ISA mode, otherwise use provided setting
-    let shouldUseAI = forceAI || useAI
+    // Check if we're using OpenAI provider (AI word generation only works with OpenAI)
+    let provider = ConfigurationManager.shared.provider?.lowercased()
+    let isOpenAI = provider == nil || provider == "openai"
     
-    // If AI is disabled and not forced, use fallback
+    // Only use AI if we're on OpenAI provider AND (forceAI or useAI is true)
+    let shouldUseAI = isOpenAI && (forceAI || useAI)
+    
+    // If AI is disabled, not forced, or not OpenAI provider, use fallback
     if !shouldUseAI {
       return getRandomFallback(for: category)
     }
@@ -156,8 +160,12 @@ public class LoadingWordGenerator {
   
   /// Get loading word for thinking/processing (async version that can use AI)
   public func getThinkingWord(useAI: Bool = false, forceAI: Bool = false) async -> String {
-    // Force AI mode for agent/ISA mode, otherwise use provided setting
-    let shouldUseAI = forceAI || useAI
+    // Check if we're using OpenAI provider (AI word generation only works with OpenAI)
+    let provider = ConfigurationManager.shared.provider?.lowercased()
+    let isOpenAI = provider == nil || provider == "openai"
+    
+    // Only use AI if we're on OpenAI provider AND (forceAI or useAI is true)
+    let shouldUseAI = isOpenAI && (forceAI || useAI)
     
     if !shouldUseAI {
       return getRandomFallback(for: "thinking")

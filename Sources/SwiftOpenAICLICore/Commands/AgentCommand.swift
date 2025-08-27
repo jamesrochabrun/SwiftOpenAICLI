@@ -21,7 +21,7 @@ public struct AgentCommand: AsyncParsableCommand {
   var message: String?
   
   @Option(name: [.short, .long], help: "The model to use")
-  var model: String = "gpt-5"
+  var model: String?
   
   @Option(name: .long, help: "System prompt")
   var system: String?
@@ -78,6 +78,9 @@ public struct AgentCommand: AsyncParsableCommand {
   var maxToolCalls: Int = 10
   
   public mutating func run() async throws {
+    // Use configured default model if not specified
+    let effectiveModel = model ?? ConfigurationManager.shared.defaultModel
+    
     let mcpConfigs = try loadMCPServers()
     
     // Determine which tools to enable
@@ -91,7 +94,7 @@ public struct AgentCommand: AsyncParsableCommand {
     }
     
     // Determine timeout based on model if not explicitly set
-    let effectiveTimeout = timeout ?? getDefaultTimeout(for: model)
+    let effectiveTimeout = timeout ?? getDefaultTimeout(for: effectiveModel)
     
     // Resolve local tools config path
     let resolvedLocalToolsPath = resolveLocalToolsPath(localToolsConfig)
@@ -111,7 +114,7 @@ public struct AgentCommand: AsyncParsableCommand {
     } else if let message = message {
       try await OpenAIService.shared.agentChat(
         message: message,
-        model: model,
+        model: effectiveModel,
         system: system,
         temperature: temperature,
         maxTokens: maxTokens,
@@ -209,6 +212,9 @@ public struct AgentCommand: AsyncParsableCommand {
       throw ExitCode.failure
     }
     
+    // Use configured default model if not specified
+    let effectiveModel = model ?? ConfigurationManager.shared.defaultModel
+    
     // Create persistent ToolExecutor for the session
     // In interactive mode, always show MCP status and never use stderr
     let toolExecutor = ToolExecutor(
@@ -223,7 +229,7 @@ public struct AgentCommand: AsyncParsableCommand {
     // Default to showing tool events in interactive mode
     // Tool events are always shown in interactive mode
     
-    print("🤖 OpenAI Agent Mode (\(model))".cyan)
+    print("🤖 OpenAI Agent Mode (\(effectiveModel))".cyan)
     if let allowedTools = allowedTools {
       print("Allowed tools: \(allowedTools)".lightBlack)
     }
@@ -237,7 +243,7 @@ public struct AgentCommand: AsyncParsableCommand {
       print("🚀 Tools initialized once for this session".green)
     }
     print("Tool events: \(showToolEventsVerbose ? "VERBOSE" : "COMPACT")".lightBlack)
-    let contextWindow = TokenCalculator.getContextWindow(for: model)
+    let contextWindow = TokenCalculator.getContextWindow(for: effectiveModel)
     print("Context window: \(contextWindow / 1000)K tokens".lightBlack)
     if contextWindow <= 5000 {
       print("⚠️  DEBUG MODE: Using reduced context window for testing".yellow)
@@ -254,14 +260,14 @@ public struct AgentCommand: AsyncParsableCommand {
     // Create command context
     var commandContext = CommandContext(
       sessionId: currentSessionId,
-      currentModel: model,
+      currentModel: effectiveModel,
       temperature: temperature,
       maxTokens: maxTokens,
       maxToolCalls: effectiveMaxToolCalls
     )
     
     // Keep track of current settings that might be changed by slash commands
-    var currentModel = model
+    var currentModel = effectiveModel
     var currentTemperature = temperature
     var currentMaxTokens = maxTokens
     var currentMaxToolCalls = effectiveMaxToolCalls

@@ -41,7 +41,7 @@ struct ISACommand: AsyncParsableCommand {
   var message: String?
   
   @Option(name: [.short, .long], help: "The model to use")
-  var model: String = "gpt-5"
+  var model: String?
   
   @Option(name: .long, help: "System prompt (will be enhanced with ISA context)")
   var system: String?
@@ -97,9 +97,12 @@ struct ISACommand: AsyncParsableCommand {
       TerminalUI.showISABanner()
     }
     
+    // Use configured default model if not specified
+    let effectiveModel = model ?? ConfigurationManager.shared.defaultModel
+    
     // Create ISA agent with enhanced capabilities
     let agent = try ISAAgent(
-      model: model,
+      model: effectiveModel,
       temperature: temperature,
       verbose: verbose,
       planMode: planMode,

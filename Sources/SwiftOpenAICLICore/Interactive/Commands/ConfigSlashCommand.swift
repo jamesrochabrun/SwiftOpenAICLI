@@ -16,11 +16,16 @@ public struct ConfigSlashCommand: SlashCommand {
       // Show all configuration
       showConfiguration(context: context)
     } else if args.count == 1 {
-      // Show specific config value
-      showConfigValue(args[0])
+      // Check if it's the setup command
+      if args[0].lowercased() == "setup" {
+        try runSetup(context: &context)
+      } else {
+        // Show specific config value
+        showConfigValue(args[0])
+      }
     } else if args.count == 2 {
       // Set configuration value
-      setConfigValue(args[0], value: args[1])
+      setConfigValue(args[0], value: args[1], context: &context)
     }
     
     return true
@@ -76,6 +81,10 @@ public struct ConfigSlashCommand: SlashCommand {
       print("• " + "base-url:".green + "       \(baseURL)")
     }
     
+    // Show debug status
+    let debugStatus = config.debugEnabled ?? false
+    print("• " + "debug:".green + "          \(debugStatus ? "enabled" : "disabled")")
+    
     print("\n💡 Usage: /config <key> <value>".lightBlack)
     print("   Example: /config temperature 0.7".lightBlack)
     print("")
@@ -94,7 +103,7 @@ public struct ConfigSlashCommand: SlashCommand {
     }
   }
   
-  private func setConfigValue(_ key: String, value: String) {
+  private func setConfigValue(_ key: String, value: String, context: inout CommandContext) {
     do {
       try ConfigurationManager.shared.set(key, value: value)
       
@@ -120,5 +129,133 @@ public struct ConfigSlashCommand: SlashCommand {
     let prefix = apiKey.prefix(4)
     let suffix = apiKey.suffix(4)
     return "\(prefix)...\(suffix)"
+  }
+  
+  private func runSetup(context: inout CommandContext) throws {
+    print("\n🚀 " + "Configuration Setup".cyan.bold)
+    print("━━━━━━━━━━━━━━━━━━━━━━━━━━".lightBlack)
+    
+    // Show available providers
+    print("\nAvailable providers:".yellow)
+    print(ProviderPresets.formatProviderList())
+    
+    // Get provider selection
+    print("\nSelect a provider (1-\(ProviderPresets.providers.count), or 'q' to cancel): ".cyan, terminator: "")
+    guard let selection = readLine() else {
+      print("Setup cancelled".yellow)
+      return
+    }
+    
+    if selection.lowercased() == "q" {
+      print("Setup cancelled".yellow)
+      return
+    }
+    
+    guard let index = Int(selection),
+          index >= 1 && index <= ProviderPresets.providers.count else {
+      print("✗ Invalid selection".red)
+      return
+    }
+    
+    let selectedProvider = ProviderPresets.providers[index - 1]
+    print("✓ Selected: \(selectedProvider.name)".green)
+    
+    // Get API key
+    print("\nEnter your API key for \(selectedProvider.name): ".cyan, terminator: "")
+    guard let apiKey = readLine(), !apiKey.isEmpty else {
+      print("✗ API key is required".red)
+      return
+    }
+    
+    // Configure the provider
+    let configManager = ConfigurationManager.shared
+    
+    do {
+      // Set provider
+      try configManager.set("provider", value: selectedProvider.id)
+      
+      // Set API key
+      try configManager.set("api-key", value: apiKey)
+      
+      // Set base URL if needed
+      if let baseURL = selectedProvider.baseURL {
+        try configManager.set("base-url", value: baseURL)
+      } else if selectedProvider.id != "custom" {
+        // Clear base URL for OpenAI (uses default)
+        try configManager.set("base-url", value: "")
+      }
+      
+      // Ask if user wants to use the default model
+      if !selectedProvider.defaultModel.isEmpty {
+        print("\nUse default model '\(selectedProvider.defaultModel)'? (Y/n): ".cyan, terminator: "")
+        let useDefault = readLine()?.lowercased() ?? "y"
+        
+        if useDefault == "y" || useDefault == "yes" || useDefault.isEmpty {
+          try configManager.set("default-model", value: selectedProvider.defaultModel)
+          // Update context model if in interactive mode
+          context.currentModel = selectedProvider.defaultModel
+        } else {
+          // Show available models
+          if !selectedProvider.availableModels.isEmpty {
+            print("\nAvailable models:".yellow)
+            for model in selectedProvider.availableModels {
+              print("  • \(model)")
+            }
+          }
+          print("\nEnter model name: ".cyan, terminator: "")
+          if let model = readLine(), !model.isEmpty {
+            try configManager.set("default-model", value: model)
+            // Update context model if in interactive mode
+            context.currentModel = model
+          }
+        }
+      }
+      
+      // For custom provider, ask for base URL
+      if selectedProvider.id == "custom" {
+        print("\nEnter the API base URL: ".cyan, terminator: "")
+        if let baseURL = readLine(), !baseURL.isEmpty {
+          try configManager.set("base-url", value: baseURL)
+        }
+        
+        print("Enter the default model name: ".cyan, terminator: "")
+        if let model = readLine(), !model.isEmpty {
+          try configManager.set("default-model", value: model)
+          context.currentModel = model
+        }
+      }
+      
+      // Ask about debug mode
+      print("\nEnable debug mode? (shows HTTP status codes and headers) (y/N): ".cyan, terminator: "")
+      let enableDebug = readLine()?.lowercased() ?? "n"
+      
+      if enableDebug == "y" || enableDebug == "yes" {
+        try configManager.set("debug", value: "true")
+      } else {
+        try configManager.set("debug", value: "false")
+      }
+      
+      print("\n✅ " + "Configuration complete!".green.bold)
+      print("\nYour settings:".cyan)
+      print("• Provider: \(selectedProvider.name)")
+      print("• API Key: \(maskApiKey(apiKey))")
+      if let baseURL = configManager.get("base-url"), !baseURL.isEmpty {
+        print("• Base URL: \(baseURL)")
+      }
+      print("• Default Model: \(configManager.get("default-model") ?? "not set")")
+      print("• Debug Mode: \(enableDebug == "y" || enableDebug == "yes" ? "enabled" : "disabled")")
+      
+      // Show environment variable tip if applicable
+      if let envVar = selectedProvider.envVarName {
+        print("\n💡 " + "Tip:".yellow + " You can also set your API key as an environment variable:")
+        print("   export \(envVar)=your-api-key")
+      }
+      
+      print("\nConfiguration saved! You can now use your selected provider.".green)
+      print("Try sending a message to test the connection.".lightBlack)
+      
+    } catch {
+      print("\n✗ Configuration failed: \(error.localizedDescription)".red)
+    }
   }
 }

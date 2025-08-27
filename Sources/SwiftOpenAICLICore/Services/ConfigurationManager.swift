@@ -13,15 +13,43 @@ public class ConfigurationManager {
     }
     
     var apiKey: String? {
-        // First check environment variable
-        if let envKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"] {
-            return envKey
+        // Provider-aware API key resolution
+        let provider = configuration.provider?.lowercased()
+        
+        // Check provider-specific environment variables first
+        switch provider {
+        case "xai", "grok":
+            if let envKey = ProcessInfo.processInfo.environment["XAI_API_KEY"] {
+                return envKey
+            }
+        case "groq":
+            if let envKey = ProcessInfo.processInfo.environment["GROQ_API_KEY"] {
+                return envKey
+            }
+        case "anthropic":
+            if let envKey = ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"] {
+                return envKey
+            }
+        case "deepseek":
+            if let envKey = ProcessInfo.processInfo.environment["DEEPSEEK_API_KEY"] {
+                return envKey
+            }
+        case "openrouter":
+            if let envKey = ProcessInfo.processInfo.environment["OPENROUTER_API_KEY"] {
+                return envKey
+            }
+        default:
+            // For OpenAI or unset provider, check OPENAI_API_KEY
+            if let envKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"] {
+                return envKey
+            }
         }
-        // Then check config file
+        
+        // Fall back to config file API key
         return configuration.apiKey
     }
     
-    var defaultModel: String {
+    public var defaultModel: String {
         return configuration.defaultModel
     }
     
