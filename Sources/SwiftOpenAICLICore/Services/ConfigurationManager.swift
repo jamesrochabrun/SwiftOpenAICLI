@@ -166,7 +166,7 @@ public class ConfigurationManager {
         return configuration
     }
     
-    func updateConfiguration(_ newConfig: Configuration) throws {
+    public func updateConfiguration(_ newConfig: Configuration) throws {
         configuration = newConfig
         try saveConfiguration()
     }

@@ -104,22 +104,32 @@ class ISAAgent {
     let effectiveMaxToolCalls = maxToolCalls != 20 ? maxToolCalls : 
       (ConfigurationManager.shared.getConfiguration().maxToolCalls ?? 20)
     
-    TerminalUI.showInteractiveHelp()
-    
     // Parse configurations once for the session
     let mcpConfigs = try parseMCPServers(mcpServers)
     let resolvedToolsPath = resolveToolsPath(localToolsConfig)
+    
+    // Show loading indicator if we have MCP servers to initialize
+    if !mcpConfigs.isEmpty {
+      print("🔌 Initializing MCP servers...".cyan)
+    }
+    
     let toolExecutor = try await createISAToolExecutor(
       mcpConfigs: mcpConfigs,
       localToolsPath: resolvedToolsPath,
       showToolEvents: showToolEvents
     )
     
+    // Show interactive help after MCP initialization is complete
+    TerminalUI.showInteractiveHelp()
+    
     var currentSessionId = sessionId ?? UUID().uuidString
     
     // Initialize input processor and slash command registry
     let inputProcessor = InputProcessor()
     let registry = SlashCommandRegistry.shared
+    
+    // Register ISA-specific slash commands
+    registry.register(MCPSlashCommand())
     
     // Create command context to track session state
     var commandContext = CommandContext(
@@ -295,8 +305,14 @@ class ISAAgent {
       showToolEventsVerbose: showToolEvents
     )
     
-    // Initialize MCP and base tools
+    // Initialize MCP and base tools with progress indication
     await toolExecutor.initialize()
+    
+    // Show completion message if we had MCP servers
+    if !mcpConfigs.isEmpty {
+      print("✅ MCP servers ready!".green)
+      print() // Empty line for better spacing
+    }
     
     // Add ISA-specific built-in tools
     registerISATools(to: toolExecutor)
@@ -325,22 +341,35 @@ class ISAAgent {
   }
   
   private func parseMCPServers(_ mcpServers: String?) throws -> [MCPServerConfig] {
-    guard let mcpServers = mcpServers else { return [] }
-    
     let configManager = ConfigurationManager.shared
     let config = configManager.getConfiguration()
-    
-    let requestedServers = Set(mcpServers.split(separator: ",").map { 
-      String($0.trimmingCharacters(in: .whitespaces)) 
-    })
-    
     var configs: [MCPServerConfig] = []
     
-    if let serverDefs = config.mcpServers {
-      for serverDef in serverDefs.allServers {
-        if let serverName = serverDef.name,
-           requestedServers.contains(serverName) && (serverDef.enabled ?? true) {
-          configs.append(serverDef.toMCPServerConfig)
+    if let mcpServers = mcpServers {
+      // Use explicitly requested servers
+      let requestedServers = Set(mcpServers.split(separator: ",").map { 
+        String($0.trimmingCharacters(in: .whitespaces)) 
+      })
+      
+      if let serverDefs = config.mcpServers {
+        for serverDef in serverDefs.allServers {
+          if let serverName = serverDef.name,
+             requestedServers.contains(serverName) && (serverDef.enabled ?? true) {
+            configs.append(serverDef.toMCPServerConfig)
+          }
+        }
+      }
+    } else {
+      // Auto-load all enabled servers when no explicit list is provided
+      if let serverDefs = config.mcpServers {
+        for serverDef in serverDefs.allServers {
+          if (serverDef.enabled ?? true) {
+            configs.append(serverDef.toMCPServerConfig)
+            if verbose {
+              let serverName = serverDef.name ?? "unnamed"
+              print("🔌 Auto-loading MCP server: \(serverName)".lightBlack)
+            }
+          }
         }
       }
     }

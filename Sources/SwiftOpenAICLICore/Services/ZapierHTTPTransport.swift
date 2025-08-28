@@ -86,6 +86,14 @@ actor ZapierHTTPTransport: Transport {
             }
         }
         
+        // Log the actual response for debugging (only when needed)
+        if let responseString = String(data: responseToStore, encoding: .utf8) {
+            // Check if this looks like an unexpected message
+            if !responseString.contains("\"jsonrpc\"") && !responseString.contains("\"result\"") && !responseString.contains("\"method\"") {
+                logger.info("Zapier response (non-MCP format): \(responseString)")
+            }
+        }
+        
         // Add the response to pending queue and notify continuation
         pendingResponses.append(responseToStore)
         

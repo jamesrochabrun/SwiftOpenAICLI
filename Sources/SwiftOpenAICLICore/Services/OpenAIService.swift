@@ -7,6 +7,9 @@ import Darwin
 import Glibc
 #endif
 
+// MARK: - OpenAIServiceError
+
+
 public final class OpenAIService {
   
   public static let shared = OpenAIService()
@@ -182,7 +185,78 @@ public final class OpenAIService {
       } catch {
         // Stop indicator on any error
         indicator?.stop()
-        throw error
+        
+        // Enhanced error extraction
+        var errorMessage = error.localizedDescription
+        var statusCode: Int?
+        
+        // Try to extract more details from SwiftOpenAI.APIError
+        if let apiError = error as? SwiftOpenAI.APIError {
+          switch apiError {
+          case .responseUnsuccessful(let description, let code):
+            errorMessage = description
+            statusCode = code
+            
+            // If we only have "status code XXX", try to extract raw response
+            if description.hasPrefix("status code") || description.hasPrefix("Status code") {
+              // The actual error message from OpenAI was lost during decoding
+              // We need to provide better guidance based on common status codes
+              switch code {
+              case 400:
+                errorMessage = "Bad Request (400): The request was invalid. Common causes:\n" +
+                              "  • Request too large (token limit exceeded)\n" +
+                              "  • Invalid model parameters\n" +
+                              "  • Malformed request body"
+              case 401:
+                errorMessage = "Unauthorized (401): Invalid or missing API key"
+              case 403:
+                errorMessage = "Forbidden (403): You don't have access to this resource"
+              case 404:
+                errorMessage = "Not Found (404): The requested resource doesn't exist"
+              case 429:
+                errorMessage = "Rate Limited (429): Too many requests. Please slow down."
+              case 500:
+                errorMessage = "Server Error (500): OpenAI is experiencing issues"
+              case 503:
+                errorMessage = "Service Unavailable (503): OpenAI service is temporarily down"
+              default:
+                errorMessage = "HTTP Error \(code): \(description)"
+              }
+            }
+          default:
+            errorMessage = apiError.displayDescription
+          }
+        }
+        
+        // Log detailed error information when debug is enabled
+        if ConfigurationManager.shared.debugEnabled == true {
+          print("\n🐛 " + "Debug Error Details:".yellow.bold)
+          print("• Error Type: \(type(of: error))")
+          print("• Description: \(errorMessage)")
+          if let code = statusCode {
+            print("• Status Code: \(code)")
+          }
+          if let swiftOpenAIError = error as? SwiftOpenAI.APIError {
+            print("• API Error Details: \(swiftOpenAIError)")
+          }
+          print("")
+        } else {
+          // Even when debug is off, show meaningful errors
+          print("\n❌ " + "Error: ".red.bold + errorMessage)
+        }
+        
+        // Check if this might be a token limit error and provide helpful guidance
+        if errorMessage.lowercased().contains("token") || 
+           errorMessage.lowercased().contains("limit") ||
+           errorMessage.lowercased().contains("too large") ||
+           statusCode == 400 {
+          print("\n💡 " + "Tips:".yellow.bold)
+          print("  • If this is a token limit issue, try asking for a summary")
+          print("  • Use a model with a larger context window (e.g., gpt-4o)")
+          print("  • Break your request into smaller parts")
+        }
+        
+        throw OpenAIServiceError.requestFailed(underlying: error)
       }
       
       // Clear the loading indicator
@@ -462,7 +536,78 @@ public final class OpenAIService {
       } catch {
         // Stop indicators on any error
         indicator?.stop()
-        throw error
+        
+        // Enhanced error extraction
+        var errorMessage = error.localizedDescription
+        var statusCode: Int?
+        
+        // Try to extract more details from SwiftOpenAI.APIError
+        if let apiError = error as? SwiftOpenAI.APIError {
+          switch apiError {
+          case .responseUnsuccessful(let description, let code):
+            errorMessage = description
+            statusCode = code
+            
+            // If we only have "status code XXX", try to extract raw response
+            if description.hasPrefix("status code") || description.hasPrefix("Status code") {
+              // The actual error message from OpenAI was lost during decoding
+              // We need to provide better guidance based on common status codes
+              switch code {
+              case 400:
+                errorMessage = "Bad Request (400): The request was invalid. Common causes:\n" +
+                              "  • Request too large (token limit exceeded)\n" +
+                              "  • Invalid model parameters\n" +
+                              "  • Malformed request body"
+              case 401:
+                errorMessage = "Unauthorized (401): Invalid or missing API key"
+              case 403:
+                errorMessage = "Forbidden (403): You don't have access to this resource"
+              case 404:
+                errorMessage = "Not Found (404): The requested resource doesn't exist"
+              case 429:
+                errorMessage = "Rate Limited (429): Too many requests. Please slow down."
+              case 500:
+                errorMessage = "Server Error (500): OpenAI is experiencing issues"
+              case 503:
+                errorMessage = "Service Unavailable (503): OpenAI service is temporarily down"
+              default:
+                errorMessage = "HTTP Error \(code): \(description)"
+              }
+            }
+          default:
+            errorMessage = apiError.displayDescription
+          }
+        }
+        
+        // Log detailed error information when debug is enabled
+        if ConfigurationManager.shared.debugEnabled == true {
+          print("\n🐛 " + "Debug Error Details:".yellow.bold)
+          print("• Error Type: \(type(of: error))")
+          print("• Description: \(errorMessage)")
+          if let code = statusCode {
+            print("• Status Code: \(code)")
+          }
+          if let swiftOpenAIError = error as? SwiftOpenAI.APIError {
+            print("• API Error Details: \(swiftOpenAIError)")
+          }
+          print("")
+        } else {
+          // Even when debug is off, show meaningful errors
+          print("\n❌ " + "Error: ".red.bold + errorMessage)
+        }
+        
+        // Check if this might be a token limit error and provide helpful guidance
+        if errorMessage.lowercased().contains("token") || 
+           errorMessage.lowercased().contains("limit") ||
+           errorMessage.lowercased().contains("too large") ||
+           statusCode == 400 {
+          print("\n💡 " + "Tips:".yellow.bold)
+          print("  • If this is a token limit issue, try asking for a summary")
+          print("  • Use a model with a larger context window (e.g., gpt-4o)")
+          print("  • Break your request into smaller parts")
+        }
+        
+        throw OpenAIServiceError.requestFailed(underlying: error)
       }
       
       // Don't stop loading indicator here - wait until we're about to display content
@@ -1014,16 +1159,32 @@ public final class OpenAIService {
   
 }
 
-enum OpenAIServiceError: LocalizedError {
+public enum OpenAIServiceError: LocalizedError {
   case noAPIKey
+  case requestFailed(underlying: Error)
+  case tokenLimitExceeded(model: String, estimatedTokens: Int)
+  case rateLimitExceeded(retryAfter: TimeInterval?)
+  case contentFiltered(reason: String)
   case timeout(seconds: Int)
   
-  var errorDescription: String? {
+  public var errorDescription: String? {
     switch self {
     case .noAPIKey:
       return "No OpenAI API key configured"
+    case .requestFailed(let underlying):
+      if let apiError = underlying as? SwiftOpenAI.APIError {
+        return "OpenAI API Error: \(apiError.displayDescription)"
+      }
+      return "Request failed: \(underlying.localizedDescription)"
+    case .tokenLimitExceeded(let model, let tokens):
+      return "Token limit exceeded for model \(model) (estimated: \(tokens) tokens). Try with shorter content."
+    case .rateLimitExceeded(let retryAfter):
+      let waitTime = retryAfter.map { "\(Int($0))s" } ?? "unknown"
+      return "Rate limit exceeded. Please wait \(waitTime) before trying again."
+    case .contentFiltered(let reason):
+      return "Content filtered: \(reason)"
     case .timeout(let seconds):
-      return "Request timed out after \(seconds) seconds"
+      return "Request timed out after \(seconds) seconds. Try again with a shorter request."
     }
   }
 }
