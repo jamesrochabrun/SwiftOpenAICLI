@@ -1,0 +1,186 @@
+name: Release ISA
+
+on:
+  push:
+    tags:
+      - 'isa-v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 1.4.0)'
+        required: true
+
+jobs:
+  build-binaries:
+    name: Build ISA Binaries
+    runs-on: macos-15
+    strategy:
+      matrix:
+        architecture: [
+          'x86_64',
+          'arm64',
+        ]
+      fail-fast: false
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      
+      - name: Select Xcode Version
+        run: sudo xcode-select --switch /Applications/Xcode_16.app/Contents/Developer
+      
+      - name: Build ISA with Optimizations
+        run: |
+          cd isa-cli
+          swift build -c release --product ISA --arch ${{ matrix.architecture }} \
+            -Xswiftc -O \
+            -Xswiftc -whole-module-optimization \
+            -Xswiftc -enforce-exclusivity=unchecked \
+            -Xswiftc -cross-module-optimization
+      
+      - name: Prepare Binary
+        run: |
+          cd isa-cli
+          mkdir -p binaries
+          if [ "${{ matrix.architecture }}" = "arm64" ]; then
+            cp .build/arm64-apple-macosx/release/ISA binaries/isa-darwin-arm64
+          else
+            cp .build/x86_64-apple-macosx/release/ISA binaries/isa-darwin-x64
+          fi
+      
+      - name: Strip Debug Symbols
+        run: |
+          cd isa-cli/binaries
+          strip -rSTx isa-darwin-*
+          chmod +x isa-darwin-*
+      
+      - name: Display Binary Size
+        run: |
+          cd isa-cli/binaries
+          ls -lh isa-darwin-*
+      
+      - name: Codesign Binary (Optional)
+        if: ${{ secrets.DEVELOPER_ID_CERTIFICATE != '' }}
+        run: |
+          cd isa-cli
+          # Create keychain and import certificate
+          echo "${{ secrets.BASE_64_ENCODED_P12 }}" | base64 --decode > certificate.p12
+          security create-keychain -p "" build.keychain
+          security import certificate.p12 -k build.keychain -P "${{ secrets.P12_PASSWORD }}" -T /usr/bin/codesign
+          security list-keychains -s build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "" build.keychain
+          security set-key-partition-list -S apple-tool:,apple: -s -k "" build.keychain
+          
+          # Codesign
+          codesign --force --options runtime --timestamp --sign "${{ secrets.DEVELOPER_ID_CERTIFICATE }}" binaries/isa-darwin-*
+          
+          # Cleanup
+          security delete-keychain build.keychain
+          rm certificate.p12
+      
+      - name: Upload Binary Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: isa-${{ matrix.architecture }}
+          path: isa-cli/binaries/isa-darwin-*
+      
+      - name: Upload Binary to Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: isa-cli/binaries/isa-darwin-*
+          tag: ${{ github.ref }}
+          file_glob: true
+          overwrite: true
+
+  publish-npm:
+    name: Publish to npm
+    needs: build-binaries
+    runs-on: macos-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          registry-url: 'https://registry.npmjs.org/'
+      
+      - name: Download ARM64 Binary
+        uses: actions/download-artifact@v4
+        with:
+          name: isa-arm64
+          path: isa-cli/npm/binaries/darwin-arm64/
+      
+      - name: Download x64 Binary
+        uses: actions/download-artifact@v4
+        with:
+          name: isa-x86_64
+          path: isa-cli/npm/binaries/darwin-x64/
+      
+      - name: Rename Binaries
+        run: |
+          cd isa-cli/npm
+          mv binaries/darwin-arm64/isa-darwin-arm64 binaries/darwin-arm64/isa
+          mv binaries/darwin-x64/isa-darwin-x64 binaries/darwin-x64/isa
+          chmod +x binaries/*/isa
+          
+          # Copy ARM64 binary as the main binary
+          cp binaries/darwin-arm64/isa bin/isa
+          chmod +x bin/isa
+      
+      - name: Extract Version from Tag
+        id: version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/isa-v}
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+      
+      - name: Update package.json Version
+        run: |
+          cd isa-cli/npm
+          npm version ${{ steps.version.outputs.VERSION }} --no-git-tag-version
+      
+      - name: Display Binary Sizes
+        run: |
+          cd isa-cli/npm
+          echo "Binary sizes:"
+          ls -lh binaries/darwin-arm64/isa
+          ls -lh binaries/darwin-x64/isa
+      
+      - name: Publish to npm
+        run: |
+          cd isa-cli/npm
+          npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      
+      - name: Create GitHub Release Notes
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          body: |
+            ## ISA v${{ steps.version.outputs.VERSION }}
+            
+            ### Installation
+            
+            ```bash
+            npm install -g isa-swift
+            ```
+            
+            ### Binary Sizes
+            - macOS ARM64 (Apple Silicon): Check artifacts
+            - macOS x64 (Intel): Check artifacts
+            
+            ### What's Changed
+            - Optimized binary size with aggressive Swift compiler flags
+            - Stripped debug symbols for smaller downloads
+            
+            ---
+            *Built and released automatically via GitHub Actions*
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

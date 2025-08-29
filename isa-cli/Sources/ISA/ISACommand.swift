@@ -32,9 +32,9 @@ struct ISACommand: AsyncParsableCommand {
       - Important files and architecture
       - Custom instructions for ISA
     
-    Version: 1.3.2
+    Version: 1.3.4
     """,
-    version: "1.3.2"
+    version: "1.3.4"
   )
   
   @Argument(help: "The message to send to ISA")
@@ -94,7 +94,13 @@ struct ISACommand: AsyncParsableCommand {
     
     // Show ASCII art on startup
     if isInteractive {
-      TerminalUI.showISABanner()
+      // Show appropriate banner based on provider
+      let config = ConfigurationManager.shared.getConfiguration()
+      if config.provider?.lowercased() == "xai" {
+        TerminalUI.showGrokBanner()
+      } else {
+        TerminalUI.showISABanner()
+      }
     }
     
     // Use configured default model and temperature if not specified

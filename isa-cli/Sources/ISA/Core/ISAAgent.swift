@@ -171,7 +171,13 @@ class ISAAgent {
         
       case .clearScreen:
         TerminalUI.clearScreen()
-        TerminalUI.showISABanner()
+        // Show appropriate banner based on provider
+        let config = ConfigurationManager.shared.getConfiguration()
+        if config.provider?.lowercased() == "xai" {
+          TerminalUI.showGrokBanner()
+        } else {
+          TerminalUI.showISABanner()
+        }
         SessionManager.shared.clearSession(currentSessionId)
         currentSessionId = UUID().uuidString
         commandContext.sessionId = currentSessionId

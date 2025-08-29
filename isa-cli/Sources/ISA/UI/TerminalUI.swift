@@ -190,6 +190,51 @@ import Foundation
 import Rainbow
 
 extension TerminalUI {
+  /// Shows Grok banner when using xAI provider - monochrome
+  static func showGrokBanner(
+    title: String = "", 
+    subtitle: String = "",
+    useTrueColor: Bool? = nil
+  ) {
+    clearScreen()
+    
+    // Clean GROK text in block letters
+    let art = """
+    
+     ██████╗ ██████╗  ██████╗ ██╗  ██╗
+    ██╔════╝ ██╔══██╗██╔═══██╗██║ ██╔╝
+    ██║  ███╗██████╔╝██║   ██║█████╔╝ 
+    ██║   ██║██╔══██╗██║   ██║██╔═██╗ 
+    ╚██████╔╝██║  ██║╚██████╔╝██║  ██╗
+     ╚═════╝ ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝
+    """
+    
+    // Print all letters in medium gray
+    let lines = art.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+    
+    for line in lines {
+      var colored = ""
+      for ch in line {
+        let s = String(ch)
+        if s == " " { 
+          colored += s
+        } else {
+          colored += s.lightBlack  // Medium gray for all characters
+        }
+      }
+      print(colored)
+    }
+    
+    // Don't print title or subtitle if empty
+    if !title.isEmpty {
+      print(title.lightBlack)
+    }
+    if !subtitle.isEmpty {
+      print(subtitle.lightBlack)
+    }
+    print() // spacing
+  }
+  
   /// Ultra rainbow banner with per-character HSL sweep
   static func showISABanner(
     title: String = "Intelligent Software Assistant",
